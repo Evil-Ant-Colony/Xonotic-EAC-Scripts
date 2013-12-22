@@ -2,12 +2,11 @@ use Time::HiRes qw/usleep/;
 
 our @color_dp2irc_table = (-1, 4, 9, 7, 12, 11, 13, -1, -1, -1); # not accurate, but legible
 
-sub out($$@);
 
-
-[ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}}))(?: |: ?|, ?)status ?(.*)} => sub {
+sub player_status()
+{
+	my ($chan,$match) = @_;
 	
-	my ($match) = $2;
 	my $found = 0;
 	my $foundany = 0;
 	for my $slot(@{$store{playerslots_active} || []})
@@ -18,7 +17,7 @@ sub out($$@);
 		{
 			if ( !$found )
 			{
-				out irc => 1, sprintf 'PRIVMSG %s :'."\002".'%-21s %2s %4s %5s %-4s %s'."\017", $config{irc_channel}, "ip address", "pl", "ping", "frags", "num", "name";
+				out irc => 1, sprintf 'PRIVMSG %s :'."\002".'%-21s %2s %4s %5s %-4s %s'."\017", $chan, "ip address", "pl", "ping", "frags", "num", "name";
 			}
 			my $frags = sprintf("%5i",$s->{frags});
 			if ( $frags eq " -666" )
@@ -26,7 +25,7 @@ sub out($$@);
 				$frags = "spect";
 			}
 			#                             chan  ip   pl ping frags ent name 
-			out irc => 1, sprintf 'PRIVMSG %s :%-21s %2i %4i %5s #%-3u %s', $config{irc_channel}, $s->{ip}, $s->{pl}, $s->{ping}, $frags, $slot, color_dp2irc $s->{name};
+			out irc => 1, sprintf 'PRIVMSG %s :%-21s %2i %4i %5s #%-3u %s', $chan, $s->{ip}, $s->{pl}, $s->{ping}, $frags, $slot, color_dp2irc $s->{name};
 			++$found;
 			usleep($found*100000);
 		}
@@ -35,7 +34,7 @@ sub out($$@);
 	
 	if(!$foundany)
 	{
-		out irc => 0, "PRIVMSG $config{irc_channel} :no nicknames match";
+		out irc => 0, "PRIVMSG $chan :no nicknames match";
 	}
 	
 	my $game = "?";
@@ -45,9 +44,19 @@ sub out($$@);
 		$game = $1;
 		$map = $2;
 	}
-	out irc => 1, "PRIVMSG $config{irc_channel} :Players: \00304$store{slots_active}\017/$store{slots_max}, Map: \00304$map\017, Game: \00304$game\017";
+	out irc => 1, "PRIVMSG $chan :Players: \00304$store{slots_active}\017/$store{slots_max}, Map: \00304$map\017, Game: \00304$game\017";
 
+}
+
+[ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}}))(?: |: ?|, ?)status ?(.*)} => sub {
 	
+	player_status($config{irc_channel},$2);
+	return 1;
+} ],
+
+[ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$store{irc_nick}})) :status ?(.*)} => sub {
+	
+	player_status($1,$2);
 	return 1;
 } ],
 
