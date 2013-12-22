@@ -5,8 +5,8 @@
 { my %pj = (
 	irc_announce_joins => 1,
 	irc_announce_parts => 1,
-	irc_show_playerip => 1,
-	irc_show_statusnumber => 1,
+	irc_show_playerip => 0,
+	irc_show_statusnumber => 0,
 	irc_show_mapname => 1,
 	irc_show_amount_of_players => 1,
 	irc_show_country => 1,
@@ -60,11 +60,11 @@ sub get_player_count
 	if ($pj->{irc_announce_joins} && !$store{"playerid_byslot_$slot"}) {
 		out irc => 0, "PRIVMSG $config{irc_channel} :\00309+ join\017: $nick\017" . 
 			($pj->{irc_show_playerip} ? " (\00304$ip\017)" : '') .
-			($pj->{irc_show_country} && $cn ? " \00302$cn\017" : '') .
+			($pj->{irc_show_country} && $cn ? " - \00302$cn\017" : '') .
 			($pj->{irc_show_statusnumber} ? " #\00304$slot\017" : '') .
 			($clonenicks ? " Clone of:$clonenicks" : '') .
-			($pj->{irc_show_mapname} ? " playing on \00304$store{map}\017" : '') .
-			($pj->{irc_show_amount_of_players} ? " players: \00304" . (get_player_count()+1) . "\017/$store{slots_max}" : '');
+			($pj->{irc_show_mapname} ? " \00304$store{map}\017" : '') .
+			($pj->{irc_show_amount_of_players} ? " [\00304" . (get_player_count()+1) . "\017/$store{slots_max}]" : '');
 	}
 	return 0;
 } ],
@@ -80,9 +80,9 @@ sub get_player_count
 	if ($pj->{irc_announce_parts} && defined $store{"playernick_byid_$id"} && $store{"playerip_byid_$id"} ne 'bot') {
 		out irc => 0, "PRIVMSG $config{irc_channel} :\00304- part\017: " . $store{"playernick_byid_$id"} . "\017" . 
 			($pj->{irc_show_playerip} ? " (\00304$ip\017)" : '') .
-			($pj->{irc_show_country} && $cn ? " \00302$cn\017": '') .
-			($pj->{irc_show_mapname} ? " playing on \00304$store{map}\017" : '') .
-			($pj->{irc_show_amount_of_players} ? " players: \00304" . (get_player_count()-1) . "\017/$store{slots_max}" : '');
+			($pj->{irc_show_country} && $cn ? " - \00302$cn\017": '') .
+			($pj->{irc_show_mapname} ? " \00304$store{map}\017" : '') .
+			($pj->{irc_show_amount_of_players} ? " [\00304" . (get_player_count()-1) . "\017/$store{slots_max}]" : '');
 	}
 	my $slot = $store{"playerslot_byid_$id"};
 	$store{"playernickraw_byid_$id"} = undef;
