@@ -8,7 +8,7 @@ our @color_dp2irc_table = (-1, 4, 9, 7, 12, 11, 13, -1, -1, -1); # not accurate,
 my $g_nades = 1;
 
 sub update_cvars {
-	out dp => 1, "rcon2irc_eval g_nades"
+	out dp => 1, "rcon2irc_eval g_nades";
 }
 
 [ dp => q{:vote:v(yes|no|timeout):(\d+):(\d+):(\d+):(\d+):(-?\d+)} => sub {
@@ -22,6 +22,7 @@ sub update_cvars {
 	{
 		$g_nades = $value;
 	}
+	out irc => "PRIVMSG $config{irc_channel} :CVAR: $cvar $value";
 	return 0;
 } ],
 
