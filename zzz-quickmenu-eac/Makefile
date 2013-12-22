@@ -15,7 +15,7 @@ all: install
 all: increase_number
 
 $(PK3) : $(PACKAGE)
-	zip -p $(PK3) $(PACKAGE) $(QUICKMENU)
+	( cd $(MAKEFILE_DIR) && zip -p $(notdir $(PK3) $(PACKAGE) $(QUICKMENU)) )
 
 $(PACKAGE) : $(QUICKMENU)
 	echo "EVIL menu!!! " >$(PACKAGE)
