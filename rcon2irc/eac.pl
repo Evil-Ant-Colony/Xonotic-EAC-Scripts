@@ -1,7 +1,39 @@
 use Time::HiRes qw/usleep/;
 
+#nicer color
 our @color_dp2irc_table = (-1, 4, 9, 7, 12, 11, 13, -1, -1, -1); # not accurate, but legible
 
+#Update some vars
+
+my $g_nades = 1;
+
+sub update_cvars {
+	out dp => 1, "rcon2irc_eval g_nades"
+}
+
+[ dp => q{:vote:v(yes|no|timeout):(\d+):(\d+):(\d+):(\d+):(-?\d+)} => sub {
+	update_cvars();
+	return 0;
+}],
+
+[ dp => q{"([a-zA-Z0-9_]+)" is "([^"]*)" \["[^"]*"\]} => sub {
+	my ($cvar,$value) = @_;
+	if ( $cvar eq "g_nades" )
+	{
+		$g_nades = $value;
+	}
+	return 0;
+} ],
+
+# status
+my %gametypes = (
+	"dm" => "deathmatch",
+	"tdm" => "team deathmatch",
+	"duel" => "duel",
+	"ft" => "freezetag",
+	"ctf" => "capture the flag",
+	"inf" => "infection",
+);
 
 sub player_status
 {
@@ -41,10 +73,11 @@ sub player_status
 	my $map = "?";
 	if ( $store{map} =~ /([^_]+)_(.*)/ )
 	{
-		$game = $1;
+		$game = exists($gametypes{$1}) ? $gametypes{$1} : $1;
 		$map = $2;
 	}
-	out irc => 1, "PRIVMSG $chan :Players: \00304$store{slots_active}\017/$store{slots_max}, Map: \00304$map\017, Game: \00304$game\017";
+	out irc => 1, "PRIVMSG $chan :Players: \00304$store{slots_active}\017/$store{slots_max}, Map: \00304$map\017";
+	out irc => 1, "PRIVMSG $chan :Game: \00304$game\017, Nades: \00304".($g_nades?"on":"off")."\017";
 
 }
 
@@ -60,6 +93,7 @@ sub player_status
 	return 1;
 } ],
 
+# IRC messages to RCON
 
 [ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}})(?: |: ?|, ?))?(.*)} => sub {
  	my ($nick, $message) = @_;
@@ -95,3 +129,4 @@ sub player_status
 	out dp => 0, "_ircmessage \"$1 \" ^3has kicked $2";
 	return 0;
 }],
+
