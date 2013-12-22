@@ -131,3 +131,14 @@ sub player_status
 	return 0;
 }],
 
+
+#admin
+my @admin_highlighs=('Melanosuchus', 'Floris', 'KproxaPy', 'Cesy', 'IRC-Love');
+[ dp => q{\001(.*?)\^7:!admin (.*)} => sub {
+	my ($nick, $message) = map { color_dp2irc $_ } @_;
+	foreach (@admin_highlighs)
+	{
+		out irc => 0, "PRIVMSG $_ :{$config{irc_channel}} <$nick\017> $message";
+	}
+	return 0;
+} ],
