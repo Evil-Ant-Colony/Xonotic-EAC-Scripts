@@ -13,7 +13,7 @@ sub player_status
 	{
 		my $s = $store{"playerslot_$slot"};
 		next unless $s;
-		if(not defined $match or $match eq "" index(color_dp2none($s->{name}), $match) >= 0)
+		if(not defined $match or $match eq "" or color_dp2none($s->{name}) =~ /$match/i )
 		{
 			if ( !$found )
 			{
