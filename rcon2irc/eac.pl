@@ -1,5 +1,7 @@
 use Time::HiRes qw/usleep/;
 
+our @color_dp2irc_table = (-1, 4, 9, 7, 12, 11, 13, -1, -1, -1); # not accurate, but legible
+
 sub out($$@);
 
 
