@@ -33,6 +33,11 @@ sub out($$@);
 		++$foundany;
 	}
 	
+	if(!$foundany)
+	{
+		out irc => 0, "PRIVMSG $config{irc_channel} :no nicknames match";
+	}
+	
 	my $game = "?";
 	my $map = "?";
 	if ( $store{map} =~ /([^_]+)_(.*)/ )
@@ -43,17 +48,6 @@ sub out($$@);
 	out irc => 1, "PRIVMSG $config{irc_channel} :Players: \00304$store{slots_active}\017/$store{slots_max}, Map: \00304$map\017, Game: \00304$game\017";
 
 	
-	if(!$found)
-	{
-		if(!$foundany)
-		{
-			out irc => 0, "PRIVMSG $config{irc_channel} :the server is empty";
-		}
-		else
-		{
-			out irc => 0, "PRIVMSG $config{irc_channel} :no nicknames match";
-		}
-	}
 	return 1;
 } ],
 
