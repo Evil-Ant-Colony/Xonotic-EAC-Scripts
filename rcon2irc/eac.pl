@@ -13,7 +13,7 @@ sub player_status
 	{
 		my $s = $store{"playerslot_$slot"};
 		next unless $s;
-		if(not defined $match or index(color_dp2none($s->{name}), $match) >= 0)
+		if(not defined $match or $match eq "" index(color_dp2none($s->{name}), $match) >= 0)
 		{
 			if ( !$found )
 			{
@@ -50,13 +50,13 @@ sub player_status
 
 [ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}}))(?: |: ?|, ?)status ?(.*)} => sub {
 	
-	player_status($config{irc_channel},$2);
+	player_status($config{irc_channel},"$2");
 	return 1;
 } ],
 
 [ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$store{irc_nick}})) :status ?(.*)} => sub {
 	
-	player_status($1,$2);
+	player_status($1,"$2");
 	return 1;
 } ],
 
