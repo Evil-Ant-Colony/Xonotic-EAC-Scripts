@@ -1,18 +1,20 @@
+# Use this to prevent IRC flood
 use Time::HiRes qw/usleep/;
 
-#nicer color
-our @color_dp2irc_table = (-1, 4, 9, 7, 12, 11, 13, -1, -1, -1); # not accurate, but legible
+# Nicer color (Replace yellow with dark yellow/orange to improve readability)
+our @color_dp2irc_table = (-1, 4, 9, 7, 12, 11, 13, -1, -1, -1); 
 
-#admins
+# Admins, will be notified on !admin
 my @admin_highlighs=('Melanosuchus', 'Floris', 'KproxaPy', 'Cesy', 'IRC-Love');
 
-#misc
+# Prevent flooding
+# @param $1 an integer value, increase it for multiple calls to this
 sub flood_sleep
 {
 	usleep($1*100000);
 }
 
-
+# Prettify gametype and map name
 my %gametypes = (
 	"dm" => "deathmatch",
 	"tdm" => "team deathmatch",
@@ -38,13 +40,18 @@ sub map_n_gametype
 #	out irc => 1, "PRIVMSG $config{irc_channel} : Test ($map,$game,$store{map})";
 	return ($map,$game);
 }
-#status
+
+# Cvars that may be usueful to show on status
 my $g_nades = 1;
 
+# Request cvar updates
 sub update_cvars {
 	out dp => 1, "rcon2irc_eval g_nades";
 }
 
+# Show player status
+# @param $1 output channel
+# @param $2 regex to match player name, empty string will match all players
 sub player_status
 {
 	my ($chan,$match) = @_;
@@ -85,9 +92,10 @@ sub player_status
 
 }
 ################################################
+#             Here be commands                 #
+################################################
 
 # status
-
 [ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}}))(?: |: ?|, ?)status ?(.*)} => sub {
 	
 	player_status($config{irc_channel},"$2");
@@ -100,17 +108,19 @@ sub player_status
 	return 1;
 } ],
 
+# update cvars when a vote ends
 [ dp => q{:vote:v(yes|no|timeout):(\d+):(\d+):(\d+):(\d+):(-?\d+)} => sub {
         update_cvars();
         return 0;
 }],
 
-
+# update cvars when a game starts
 [ dp => q{:gamestart:(.*):[0-9.]*} => sub {
 	update_cvars();
 	return 0;
 } ],
 
+# Read cvar changes
 [ dp => q{"([^"]+)" is "([^"]*)".*} => sub {
         my ($cvar,$value) = @_;
         if ( $cvar eq "g_nades" )
@@ -121,8 +131,7 @@ sub player_status
         return 0;
 } ],
 
-
-
+# Update map name when possible
 [ dp => q{map:\s*(.+)} => sub {
 	my $map = $1;
 	if ( $store{map} eq "" )
@@ -133,7 +142,6 @@ sub player_status
 }],
 
 # IRC messages to RCON
-
 [ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}})(?: |: ?|, ?))?(.*)} => sub {
  	my ($nick, $message) = @_;
 	$message = color_irc2dp $message;
@@ -170,7 +178,7 @@ sub player_status
 }],
 
 
-#admin
+# !admin
 [ dp => q{\001(.*?)\^7:\s*!admin\s*(.*)} => sub {
 	my ($nick, $message) = map { color_dp2irc $_ } @_;
 	foreach (@admin_highlighs)
@@ -272,7 +280,7 @@ sub player_status
 	return 1;
 } ],
 
-# scores: Xonotic server -> IRC channel, new format
+# Update scores, ensure that everyone is included
 [ dp => q{:player:see-labels:(-?\d+)[-0-9,]*:(\d+):(-?\d+):(\d+):(.*)} => sub {
 	my ($frags, $time, $team, $id, $name) = @_;
 	return if not exists $store{scores};
