@@ -270,7 +270,7 @@ sub player_status
 			{
 				$name = " " . color_dp2irc $name;
 			}
-			out irc => 1, sprintf('PRIVMSG %s :%3d'."\017".' %s',$config{irc_channel}, $frags, $name);
+			out irc => 1, "PRIVMSG $config{irc_channel} :\002".sprintf('%3d',$frags)."\017 $name\017";
 			flood_sleep(++$floodcount);
 			#out irc => 1, "PRIVMSG $config{irc_channel} :(score)F:$frags,T:$team,ID:$id,N:".color_dp2irc($name)."\017";
 			#flood_sleep(++$floodcount); 
