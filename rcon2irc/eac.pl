@@ -168,7 +168,13 @@ sub player_status
 	return 0;
 }],
 
-[ irc => q{:([^! ]*)![^ ]* (?i:PART|QUIT) (?i:(??{$config{irc_channel}})).*} => sub {
+[ irc => q{:([^! ]*)![^ ]* (?i:PART) (?i:(??{$config{irc_channel}})).*} => sub {
+	my $nick = $1;
+	out dp => 0, "_ircmessage \"$nick \" ^3has Left";
+	return 0;
+}],
+
+[ irc => q{:([^! ]*)![^ ]* (?i:QUIT) .*} => sub {
 	my $nick = $1;
 	out dp => 0, "_ircmessage \"$nick \" ^3has Left";
 	return 0;
