@@ -91,21 +91,64 @@ sub player_status
 	out irc => 1, "PRIVMSG $chan :Game: \00304$game\017, Nades: \00304".($g_nades?"on":"off")."\017";
 
 }
+
+sub admin_commands
+{
+	my ($hostmask, $nick, $command, $chan) = @_;
+	
+	return 0 unless ($config{irc_admin_password} ne '' || $store{irc_quakenet_users});
+
+	my $dpnick = color_dpfix $nick;
+
+	if(($store{logins}{$hostmask} || 0) < time())
+	{
+		#let the default handle give feedback
+		return 0;
+	}
+	
+	if($command =~ /^status(?: (.*))?$/)
+	{
+		player_status($chan,$1);
+		return 1;
+	}
+	
+	if($command =~ /^kick # (\d+)(?: (.*))$/)
+	{
+		my ($id, $reason) = ($1, $2);
+		$reason = "no reason" if ( not defined $reason or $reason eq "" );
+		my $dpreason = color_irc2dp $reason;
+		$dpreason =~ s/^(~?)(.*)/$1irc $dpnick: $2/g;
+		$dpreason =~ s/(["\\])/\\$1/g;
+		out dp => 0, "kick # $id $dpreason";
+		my $slotnik = "playerslot_$id";
+		out irc => 0, "PRIVMSG $chan :kicked #$id (@{[color_dp2irc $store{$slotnik}{name}]}\017 @ $store{$slotnik}{ip}) ($reason)";
+		return 1;
+	}
+	
+	if($command =~ /^vcall (.+)$/)
+	{
+		my $vote = color_irc2dp $1;
+		out dp => 0, "vcall $vote";
+		return 1;
+	}
+
+	return 0;
+}
+
 ################################################
 #             Here be commands                 #
 ################################################
 
 # status
-[ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}}))(?: |: ?|, ?)status ?(.*)} => sub {
-	
-	player_status($config{irc_channel},"$2");
-	return 1;
+[ irc => q{:(([^! ]*)![^ ]*) (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}}))(?: |: ?|, ?)(.*)} => sub {
+	my ($hostmask, $nick, $command) = @_;
+	return admin_commands($hostmask, $nick, $command,$config{irc_channel});
 } ],
 
-[ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$store{irc_nick}})) :status ?(.*)} => sub {
-	
-	player_status($1,"$2");
-	return 1;
+# IRC admin commands -- private
+[ irc => q{:(([^! ]*)![^ ]*) (?i:PRIVMSG) ?i:(??{$store{irc_nick}})) :(.*)} => sub {
+	my ($hostmask, $nick, $command) = @_;
+	return admin_commands($hostmask, $nick, $command,$nick);
 } ],
 
 # update cvars when a vote ends
