@@ -112,7 +112,7 @@ sub admin_commands
 		return 1;
 	}
 	
-	if($command =~ /^kick # (\d+)(?: (.*))$/)
+	if($command =~ /^kick # (\d+)(?: (.*))?$/)
 	{
 		my ($id, $reason) = ($1, $2);
 		$reason = "no reason" if ( not defined $reason or $reason eq "" );
