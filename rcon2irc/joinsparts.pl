@@ -31,10 +31,17 @@ sub out($$@);
 sub get_player_count
 {
 	my $count = 0;
-	for (1 .. $store{slots_max}) {
-		my $id = $store{"playerid_byslot_$_"};
-		$count++ if (defined $id && $store{"playerip_byid_$id"} ne 'bot');
+
+	for my $slot(@{$store{playerslots_active} || []})
+	{
+		my $s = $store{"playerslot_$slot"};
+		next unless $s;
+		$count++ if ( $s->{ip} ne 'botclient');
 	}
+	#for (1 .. $store{slots_max}) {
+	#	my $id = $store{"playerid_byslot_$_"};
+	#	$count++ if (defined $id && $store{"playerip_byid_$id"} ne 'botclient');
+	#}
 	return $count;
 }
 # Catch joins and display requested info
