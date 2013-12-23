@@ -191,6 +191,10 @@ sub player_status
 
 # Match score
 [ dp => q{:end} => sub {
+	if ( not exists $store{scores} )
+	{
+			return 0;
+	}
 
 	my $s = $store{scores};
 	delete $store{scores};
@@ -237,14 +241,10 @@ sub player_status
 	# display only for non-empty server
 	if ( @p )
 	{
+		my $floodcount = 0;
 		my ($map,$game) = map_n_gametype();
-        	out irc => 1, "PRIVMSG $config{irc_channel} :\00304$game\017 on \00304$map\017 ended:";
-	        flood_sleep(++$floodcount);
-        	if ( not exists $store{scores} )
-	        {
-                	out irc => 1, "PRIVMSG $config{irc_channel} :Scores not available";
-        	        return 0;
-	        }
+		out irc => 1, "PRIVMSG $config{irc_channel} :\00304$game\017 on \00304$map\017 ended:";
+		flood_sleep(++$floodcount);
 
 		if($teams_matter)
 		{
