@@ -146,7 +146,7 @@ sub admin_commands
 } ],
 
 # IRC admin commands -- private
-[ irc => q{:(([^! ]*)![^ ]*) (?i:PRIVMSG) ?i:(??{$store{irc_nick}})) :(.*)} => sub {
+[ irc => q{:(([^! ]*)![^ ]*) (?i:PRIVMSG) (?i:(??{$store{irc_nick}})) :(.*)} => sub {
 	my ($hostmask, $nick, $command) = @_;
 	return admin_commands($hostmask, $nick, $command,$nick);
 } ],
