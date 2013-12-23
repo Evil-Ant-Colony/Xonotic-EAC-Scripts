@@ -112,7 +112,7 @@ sub admin_commands
 		return 1;
 	}
 	
-	if($command =~ /^kick # (\d+)(?: (.*))?$/)
+	if($command =~ /^kick (?:# )?(\d+)(?: (.*))?$/)
 	{
 		my ($id, $reason) = ($1, $2);
 		$reason = "no reason" if ( not defined $reason or $reason eq "" );
@@ -129,6 +129,12 @@ sub admin_commands
 	{
 		my $vote = color_irc2dp $1;
 		out dp => 0, "vcall $vote";
+		return 1;
+	}
+	
+	if($command eq "vote stop")
+	{
+		out dp => 0, "vote stop";
 		return 1;
 	}
 
