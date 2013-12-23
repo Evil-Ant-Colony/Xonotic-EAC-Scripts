@@ -28,12 +28,14 @@ sub map_n_gametype
 	my $map = "?";
 	if ( $store{map} =~ /([^_]+)_(.*)/ )
 	{
-		($game,$map) = @_;
+		$game=$1;
+		$map=$2;
 		if ( exists($gametypes{$game}) )
 		{
 			$game=$gametypes{$game};
 		}
 	}
+#	out irc => 1, "PRIVMSG $config{irc_channel} : Test ($map,$game,$store{map})";
 	return ($map,$game);
 }
 #status
@@ -120,6 +122,16 @@ sub player_status
 } ],
 
 
+
+[ dp => q{map:\s*(.+)} => sub {
+	my $map = $1;
+	if ( $store{map} eq "" )
+	{
+		$store{map} = "?_$map";
+	}
+	return 0;
+}],
+
 # IRC messages to RCON
 
 [ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}})(?: |: ?|, ?))?(.*)} => sub {
@@ -171,7 +183,7 @@ sub player_status
 
 # Match score
 [ dp => q{:end} => sub {
-	return if not exists $store{scores};
+
 	my $s = $store{scores};
 	delete $store{scores};
 	my $teams_matter = defined $s->{teams};
@@ -210,17 +222,22 @@ sub player_status
 	}
 	else
 	{
-		@p = sort { $b->[0] <=> $a->[0] } @{$s->{players}};
+		#@p = sort { $b->[0] <=> $a->[0] } @{$s->{players}};
+		@p = @{$s->{players}};
 	}
 
 	# display only for non-empty server
 	if ( @p )
 	{
-		my $floodcount = 0;
 		my ($map,$game) = map_n_gametype();
-		out irc => 1, "PRIVMSG $config{irc_channel} :\00304$game\017 on \00304$map\017 ended:";
-		flood_sleep(++$floodcount);
-		
+        	out irc => 1, "PRIVMSG $config{irc_channel} :\00304$game\017 on \00304$map\017 ended:";
+	        flood_sleep(++$floodcount);
+        	if ( not exists $store{scores} )
+	        {
+                	out irc => 1, "PRIVMSG $config{irc_channel} :Scores not available";
+        	        return 0;
+	        }
+
 		if($teams_matter)
 		{
 			my $scores_string = '';
@@ -235,8 +252,8 @@ sub player_status
 		}
 		for(@p)
 		{
-			my ($frags, $team, $name) = @$_;
-			$name = color_dpfix substr($name, 0, $maxnamelen);
+			my ($frags, $team, $name, $id) = @$_;
+			$name = color_dpfix $name;
 			if($teams_matter)
 			{
 				$name = "\003" . $color_team2irc_table{$team} . " " . color_dp2none $name;
@@ -245,10 +262,37 @@ sub player_status
 			{
 				$name = " " . color_dp2irc $name;
 			}
-			out irc => 1, "PRIVMSG $config{irc_channel} :$name\017 $frags";
+			out irc => 1, sprintf('PRIVMSG %s :%3d'."\017".' %s',$config{irc_channel}, $frags, $name);
 			flood_sleep(++$floodcount);
+			#out irc => 1, "PRIVMSG $config{irc_channel} :(score)F:$frags,T:$team,ID:$id,N:".color_dp2irc($name)."\017";
+			#flood_sleep(++$floodcount); 
+
 		}
 	}
 	return 1;
 } ],
 
+# scores: Xonotic server -> IRC channel, new format
+[ dp => q{:player:see-labels:(-?\d+)[-0-9,]*:(\d+):(-?\d+):(\d+):(.*)} => sub {
+	my ($frags, $time, $team, $id, $name) = @_;
+	return if not exists $store{scores};
+	my $found = 0;
+	#for ( @{$store{scores}{players}} )
+	#{
+	#	if ( @$_[3] == $id )
+	#	{
+	#		$found = 1;
+	#		@$_[0] = $frags;
+	#		@$_[1] = $team;
+	#		@$_[2] = $name;
+	#		last;
+	#	}
+	#}
+	if ( ! $found )
+	{
+		push @{$store{scores}{players}}, [$frags, $team, $name, $id];
+	}
+	#out irc => 0, "PRIVMSG $config{irc_channel} :F:$frags,T:$time,Te:$team,ID:$id,N:".color_dp2irc($name)."\017";
+
+	return 1;
+} ],
