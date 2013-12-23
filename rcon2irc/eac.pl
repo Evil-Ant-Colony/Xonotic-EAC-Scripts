@@ -142,8 +142,10 @@ sub player_status
 }],
 
 # IRC messages to RCON
-[ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}})(?: |: ?|, ?))?(.*)} => sub {
- 	my ($nick, $message) = @_;
+
+# Messages starting with [ won't be shown, otherwise everything is sent
+[ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}})(?: |: ?|, ?))?([^[].*)} => sub {
+	my ($nick, $message) = @_;
 	$message = color_irc2dp $message;
 	$message =~ s/(["\\])/\\$1/g;
 	$message =~ s/([;])/:/g;
@@ -234,8 +236,8 @@ sub player_status
 	}
 	else
 	{
-		#@p = sort { $b->[0] <=> $a->[0] } @{$s->{players}};
-		@p = @{$s->{players}};
+		@p = sort { $b->[0] <=> $a->[0] } @{$s->{players}};
+		#@p = @{$s->{players}};
 	}
 
 	# display only for non-empty server
