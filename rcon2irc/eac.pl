@@ -23,6 +23,17 @@ sub dp_esc
 	return $text;
 }
 
+#change server admin nick and perform command
+# @param $1 dp-escaped nick
+# @param $2 raw dp command
+sub dp_cmd_as
+{
+	out dp => 1, 'set say_as_restorenick \"$sv_adminnick\"',
+		'sv_adminnick \"[IRC] '.$1.'^3\"',
+		$2,
+		'rcon2irc_say_as_restore',
+}
+
 # Prettify gametype and map name
 my %gametypes = (
 	"dm" => "deathmatch",
@@ -162,14 +173,13 @@ sub admin_commands
 	
 	if($command =~ /^vcall (.+)$/)
 	{
-		my $vote = dp_esc $1;
-		out dp => 0, "vcall $vote";
+		dp_cmd_as ($dpnick, "vcall ".dp_esc($1));
 		return 1;
 	}
 	
 	if($command eq "vote stop")
 	{
-		out dp => 0, "vote stop";
+		dp_vote_as ($dpnick, "vote stop");
 		return 1;
 	}
 
