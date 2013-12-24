@@ -129,19 +129,19 @@ sub admin_commands
 		my $regex = $1;
 		if ( $regex eq "" )
 		{
-			out irc => 0, "PRIVMSG $chan :".(scalar @g_maplist)." maps";
+			out irc => 0, "PRIVMSG $chan :\00304".(scalar @g_maplist)."\017 maps";
 		}
 		else
 		{
 			my @matches = grep /$regex/, @g_maplist;
 			my $floodcount = 0;
-			out irc => 1, "PRIVMSG $chan :".(scalar @matches)."/".(scalar @g_maplist)." maps match";
+			out irc => 1, "PRIVMSG $chan :\00304".(scalar @matches)."\017/".(scalar @g_maplist)." maps match";
 			flood_sleep($floodcount);
 			if ( scalar @matches <= 5 )
 			{
 				for ( 0..($#matches) )
 				{
-					out irc => 1, "PRIVMSG $chan :".$matches[$_];
+					out irc => 1, "PRIVMSG $chan :\00303".$matches[$_]."\017";
 					flood_sleep(++$floodcount);
 				}
 			}
