@@ -1,5 +1,5 @@
+# Use this to prevent IRC flood
 use Time::HiRes qw/usleep/;
-use List::Util qw[min];
 
 # Nicer color (Replace yellow with dark yellow/orange to improve readability)
 our @color_dp2irc_table = (-1, 4, 9, 7, 12, 11, 13, -1, -1, -1); 
@@ -57,6 +57,7 @@ my @g_maplist;
 # Request cvar updates
 sub update_cvars {
 	out dp => 1, "rcon2irc_eval g_nades";
+	out dp => 1, "rcon2irc_eval g_maplist";
 }
 
 # Show player status
@@ -112,19 +113,19 @@ sub admin_commands
 		my $regex = $1;
 		if ( $regex eq "" )
 		{
-			out irc => 0, "PRIVMSG $chan : ".(scalar @g_maplist)." maps";
+			out irc => 0, "PRIVMSG $chan :".(scalar @g_maplist)." maps";
 		}
 		else
 		{
 			my @matches = grep /$regex/, @g_maplist;
 			my $floodcount = 0;
-			out irc => 1, "PRIVMSG $chan : ".(scalar @matches)."/".(scalar @g_maplist)." maps match";
+			out irc => 1, "PRIVMSG $chan :".(scalar @matches)."/".(scalar @g_maplist)." maps match";
 			flood_sleep($floodcount);
 			if ( scalar @matches <= 5 )
 			{
 				for ( 0..($#matches) )
 				{
-					out irc => 1, "PRIVMSG $chan : ".$matches[$_];
+					out irc => 1, "PRIVMSG $chan :".$matches[$_];
 					flood_sleep(++$floodcount);
 				}
 			}
@@ -210,7 +211,7 @@ sub admin_commands
 	{
 			$g_nades = $value;
 	}
-	else if ( $cvar eq "g_maplist" )
+	if ( $cvar eq "g_maplist" )
 	{
 		if ( $value ne "" )
 		{
