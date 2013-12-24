@@ -65,6 +65,41 @@ sub map_n_gametype
 	return ($map,$game);
 }
 
+#count platers
+#return:
+#	active players
+#	spectators
+#	bots
+#	total
+sub count_players
+{
+	my $real_active = 0, $real_spect = 0, $bots = 0;
+
+	for my $slot(@{$store{playerslots_active} || []})
+	{
+		my $s = $store{"playerslot_$slot"};
+		next unless $s;
+		if ( $s->{ip} ne 'botclient')
+		{
+			if ( $s->{frags} == -666 )
+			{
+				$real_spect++;
+			}
+			else
+			{
+				$real_active++;
+			}
+		}
+		else
+		{
+			$bots++;
+		}
+	}
+	return ($real_active, $real_spect, $bots, $store{slots_active});
+}
+
+
+
 # Cvars that may be usueful to show on status
 my $g_nades = 1, g_za;
 my $sv_adminnick = "(console)";
@@ -115,8 +150,9 @@ sub player_status
 	}
 	
 	my ($map,$game) = map_n_gametype();
-	out irc => 1, "PRIVMSG $chan :Players: \00304$store{slots_active}\017/$store{slots_max}, Map: \00304$map\017";
-	out irc => 1, "PRIVMSG $chan :Game: \00304$game\017, Nades: \00304".($g_nades?"on":"off")."\017, Zombie: \00304".($g_za?"on":"off")."\017";
+	my ($real_active, $real_spect, $bots,$player_total) = count_players();
+	out irc => 1, "PRIVMSG $chan :Players: \00304$real_active\017 active, \00304$real_spect\017 spectators, \00304$bots\017 bots, \00304$player_total\017/$store{slots_max} total";
+	out irc => 1, "PRIVMSG $chan :Map: \00304$map\017, Game: \00304$game\017, Nades: \00304".($g_nades?"on":"off")."\017, Zombie: \00304".($g_za?"on":"off")."\017";
 
 }
 
