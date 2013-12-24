@@ -28,12 +28,12 @@ sub dp_esc
 # @param $2 raw dp command
 sub dp_cmd_as
 {
+	my $sv_oldnick = $sv_adminnick;
 	$sv_adminnick = "[IRC] ".$_[0];
-	out dp => 1, 'set say_as_restorenick "$sv_adminnick" ',
-		'sv_adminnick "'.$sv_adminnick.'" ';
-	out dp => 1, 'sv_adminnick';
-	sleep(1);
-	out dp => 1, $_[1]." ",
+	out dp => 1, 'set say_as_restorenick "'.$sv_oldnick.'" ',
+		'sv_adminnick "'.$sv_adminnick.'" ',
+		'sv_adminnick ',
+		$_[1]." ",
 		'defer 3 rcon2irc_say_as_restore ',
 		'defer 5 sv_adminnick ';
 }
