@@ -1,5 +1,5 @@
-# Use this to prevent IRC flood
 use Time::HiRes qw/usleep/;
+use List::Util qw[min];
 
 # Nicer color (Replace yellow with dark yellow/orange to improve readability)
 our @color_dp2irc_table = (-1, 4, 9, 7, 12, 11, 13, -1, -1, -1); 
@@ -52,6 +52,7 @@ sub map_n_gametype
 
 # Cvars that may be usueful to show on status
 my $g_nades = 1;
+my @g_maplist;
 
 # Request cvar updates
 sub update_cvars {
@@ -104,6 +105,32 @@ sub player_status
 sub admin_commands
 {
 	my ($hostmask, $nick, $command, $chan) = @_;
+	
+	#available to everyone
+	if ( $command =~ /^maps(?: (.*))?$/ )
+	{
+		my $regex = $1;
+		if ( $regex eq "" )
+		{
+			out irc => 0, "PRIVMSG $chan : ".(scalar @g_maplist)." maps";
+		}
+		else
+		{
+			my @matches = grep /$regex/, @g_maplist;
+			my $floodcount = 0;
+			out irc => 1, "PRIVMSG $chan : ".(scalar @matches)."/".(scalar @g_maplist)." maps match";
+			flood_sleep($floodcount);
+			if ( scalar @matches <= 5 )
+			{
+				for ( 0..($#matches) )
+				{
+					out irc => 1, "PRIVMSG $chan : ".$matches[$_];
+					flood_sleep(++$floodcount);
+				}
+			}
+		}
+		return 1;
+	}
 	
 	return 0 unless ($config{irc_admin_password} ne '' || $store{irc_quakenet_users});
 
@@ -166,8 +193,8 @@ sub admin_commands
 
 # update cvars when a vote ends
 [ dp => q{:vote:v(yes|no|timeout):(\d+):(\d+):(\d+):(\d+):(-?\d+)} => sub {
-        update_cvars();
-        return 0;
+	update_cvars();
+	return 0;
 }],
 
 # update cvars when a game starts
@@ -178,13 +205,20 @@ sub admin_commands
 
 # Read cvar changes
 [ dp => q{"([^"]+)" is "([^"]*)".*} => sub {
-        my ($cvar,$value) = @_;
-        if ( $cvar eq "g_nades" )
-        {
-                $g_nades = $value;
-        }
-        #out irc => 0, "PRIVMSG $config{irc_channel} :CVAR:$cvar=$value";
-        return 0;
+	my ($cvar,$value) = @_;
+	if ( $cvar eq "g_nades" )
+	{
+			$g_nades = $value;
+	}
+	else if ( $cvar eq "g_maplist" )
+	{
+		if ( $value ne "" )
+		{
+			@g_maplist = split(" ",$value);
+		}
+	}
+	#out irc => 0, "PRIVMSG $config{irc_channel} :CVAR:$cvar=$value";
+	return 0;
 } ],
 
 # Update map name when possible
