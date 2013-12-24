@@ -14,6 +14,15 @@ sub flood_sleep
 	usleep($1*100000);
 }
 
+# escape and prevent DP injection
+sub dp_esc
+{
+	my $text = color_irc2dp join(" ",@_);
+	$text =~ s/(["\\])/\\$1/g;
+	$text =~ s/([;])/:/g;
+	return $text;
+}
+
 # Prettify gametype and map name
 my %gametypes = (
 	"dm" => "deathmatch",
@@ -116,9 +125,7 @@ sub admin_commands
 	{
 		my ($id, $reason) = ($1, $2);
 		$reason = "no reason" if ( not defined $reason or $reason eq "" );
-		my $dpreason = color_irc2dp $reason;
-		$dpreason =~ s/^(~?)(.*)/$1irc $dpnick: $2/g;
-		$dpreason =~ s/(["\\])/\\$1/g;
+		my $dpreason = dp_esc("irc $dpnick: $reason");
 		out dp => 0, "kick # $id $dpreason";
 		my $slotnik = "playerslot_$id";
 		out irc => 0, "PRIVMSG $chan :kicked #$id (@{[color_dp2irc $store{$slotnik}{name}]}\017 @ $store{$slotnik}{ip}) ($reason)";
@@ -127,7 +134,7 @@ sub admin_commands
 	
 	if($command =~ /^vcall (.+)$/)
 	{
-		my $vote = color_irc2dp $1;
+		my $vote = dp_esc $1;
 		out dp => 0, "vcall $vote";
 		return 1;
 	}
@@ -195,9 +202,7 @@ sub admin_commands
 # Messages starting with [ won't be shown, otherwise everything is sent
 [ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}})(?: |: ?|, ?))?([^[].*)} => sub {
 	my ($nick, $message) = @_;
-	$message = color_irc2dp $message;
-	$message =~ s/(["\\])/\\$1/g;
-	$message =~ s/([;])/:/g;
+	$message = dp_esc($message);
 	if ($message =~ /^ACTION(.*)/) 
 	{ 
 		$message = $1; 
