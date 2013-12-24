@@ -66,13 +66,14 @@ sub map_n_gametype
 }
 
 # Cvars that may be usueful to show on status
-my $g_nades = 1;
+my $g_nades = 1, g_za;
 my $sv_adminnick = "(console)";
 my @g_maplist;
 
 # Request cvar updates
 sub update_cvars {
 	out dp => 1, "rcon2irc_eval g_nades";
+	out dp => 1, "rcon2irc_eval g_za";
 	out dp => 1, "rcon2irc_eval g_maplist";
 }
 
@@ -115,7 +116,7 @@ sub player_status
 	
 	my ($map,$game) = map_n_gametype();
 	out irc => 1, "PRIVMSG $chan :Players: \00304$store{slots_active}\017/$store{slots_max}, Map: \00304$map\017";
-	out irc => 1, "PRIVMSG $chan :Game: \00304$game\017, Nades: \00304".($g_nades?"on":"off")."\017";
+	out irc => 1, "PRIVMSG $chan :Game: \00304$game\017, Nades: \00304".($g_nades?"on":"off")."\017, Zombie: \00304".($g_za?"on":"off")."\017";
 
 }
 
@@ -228,6 +229,10 @@ sub admin_commands
 	if ( $cvar eq "g_nades" )
 	{
 		$g_nades = $value;
+	}
+	if ( $cvar eq "g_za" )
+	{
+		$g_za = $value;
 	}
 	if ( $cvar eq "g_maplist" )
 	{
