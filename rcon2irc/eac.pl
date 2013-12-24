@@ -28,10 +28,14 @@ sub dp_esc
 # @param $2 raw dp command
 sub dp_cmd_as
 {
-	out dp => 1, 'set say_as_restorenick \"$sv_adminnick\"',
-		'sv_adminnick \"[IRC] '.$1.'^3\"',
-		$2,
-		'rcon2irc_say_as_restore',
+	$sv_adminnick = "[IRC] ".$_[0];
+	out dp => 1, 'set say_as_restorenick "$sv_adminnick" ',
+		'sv_adminnick "'.$sv_adminnick.'" ';
+	out dp => 1, 'sv_adminnick';
+	sleep(1);
+	out dp => 1, $_[1]." ",
+		'defer 3 rcon2irc_say_as_restore ',
+		'defer 5 sv_adminnick ';
 }
 
 # Prettify gametype and map name
@@ -63,6 +67,7 @@ sub map_n_gametype
 
 # Cvars that may be usueful to show on status
 my $g_nades = 1;
+my $sv_adminnick = "(console)";
 my @g_maplist;
 
 # Request cvar updates
@@ -150,6 +155,9 @@ sub admin_commands
 
 	if(($store{logins}{$hostmask} || 0) < time())
 	{
+		# get info so the next time it may work if the user is authorized
+		$store{quakenet_hosts}->{$nick} = $hostmask;
+		out irc => 0, "PRIVMSG Q :whois $nick"; # get auth for single user
 		#let the default handle give feedback
 		return 0;
 	}
@@ -179,7 +187,7 @@ sub admin_commands
 	
 	if($command eq "vote stop")
 	{
-		dp_vote_as ($dpnick, "vote stop");
+		dp_cmd_as ($dpnick, "vote stop");
 		return 1;
 	}
 
@@ -219,13 +227,24 @@ sub admin_commands
 	my ($cvar,$value) = @_;
 	if ( $cvar eq "g_nades" )
 	{
-			$g_nades = $value;
+		$g_nades = $value;
 	}
 	if ( $cvar eq "g_maplist" )
 	{
 		if ( $value ne "" )
 		{
 			@g_maplist = split(" ",$value);
+		}
+	}
+	if ( $cvar eq "sv_adminnick" )
+	{
+		if ( $value eq "" )
+		{
+			$sv_adminnick = "(console)";
+		}
+		else
+		{
+			$sv_adminnick = $value;
 		}
 	}
 	#out irc => 0, "PRIVMSG $config{irc_channel} :CVAR:$cvar=$value";
@@ -409,5 +428,24 @@ sub admin_commands
 	}
 	#out irc => 0, "PRIVMSG $config{irc_channel} :F:$frags,T:$time,Te:$team,ID:$id,N:".color_dp2irc($name)."\017";
 
+	return 1;
+} ],
+
+
+# chat: Xonotic server -> IRC channel, vote call
+[ dp => q{:vote:vcall:(\d+):(.*)} => sub {
+	my ($id, $command) = @_;
+	$command = color_dp2irc $command;
+	my $oldnick = $id ? $store{"playernick_byid_$id"} : $sv_adminnick;
+	out irc => 0, "PRIVMSG $config{irc_channel} :* $oldnick\017 calls a vote for \"$command\017\"";
+	return 1;
+} ],
+
+
+# chat: Xonotic server -> IRC channel, vote stop
+[ dp => q{:vote:vstop:(\d+)} => sub {
+	my ($id) = @_;
+	my $oldnick = $id ? $store{"playernick_byid_$id"} : $sv_adminnick;
+	out irc => 0, "PRIVMSG $config{irc_channel} :* $oldnick\017 stopped the vote";
 	return 1;
 } ],
