@@ -28,9 +28,9 @@ sub dp_esc
 # @param $2 raw dp command
 sub dp_cmd_as
 {
-	my $sv_oldnick = $sv_adminnick;
+	#my $sv_oldnick = $sv_adminnick;
 	$sv_adminnick = "[IRC] ".$_[0];
-	out dp => 1, 'set say_as_restorenick "'.$sv_oldnick.'" ',
+	out dp => 1, 'set say_as_restorenick "" ',
 		'sv_adminnick "'.$sv_adminnick.'" ',
 		'sv_adminnick ',
 		$_[1]." ",
@@ -130,6 +130,7 @@ sub player_status
 			if ( !$found )
 			{
 				out irc => 1, sprintf 'PRIVMSG %s :'."\002".'%-21s %2s %4s %5s %-4s %s'."\017", $chan, "ip address", "pl", "ping", "frags", "num", "name";
+				flood_sleep(0);
 			}
 			my $frags = sprintf("%5i",$s->{frags});
 			if ( $frags eq " -666" )
@@ -139,7 +140,7 @@ sub player_status
 			#                             chan  ip   pl ping frags ent name 
 			out irc => 1, sprintf 'PRIVMSG %s :%-21s %2i %4i %5s #%-3u %s', $chan, $s->{ip}, $s->{pl}, $s->{ping}, $frags, $slot, color_dp2irc $s->{name};
 			++$found;
-			flood_sleep($found);
+			flood_sleep($found+1);
 		}
 		++$foundany;
 	}
