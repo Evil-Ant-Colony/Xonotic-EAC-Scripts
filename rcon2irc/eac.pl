@@ -3,6 +3,7 @@ use Time::HiRes qw/usleep/;
 
 # Nicer color (Replace yellow with dark yellow/orange to improve readability)
 our @color_dp2irc_table = (-1, 4, 9, 7, 12, 11, 13, -1, -1, -1); 
+our %color_team2irc_table = (5 => 4, 14 => 12, 13 => 7, 10 => 13);
 
 # Admins, will be notified on !admin
 my @admin_highlighs=('Melanosuchus', 'Floris', 'KproxaPy', 'Cesy', 'IRC-Love');

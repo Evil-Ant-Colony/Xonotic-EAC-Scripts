@@ -1,5 +1,5 @@
 #!/bin/bash
-gametypes="dm tdm ft inf"
+gametypes="dm tdm ft inf kh"
 out_dir=~/.xonotic/data/maps
 
 
