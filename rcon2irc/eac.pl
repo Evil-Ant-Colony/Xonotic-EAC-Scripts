@@ -492,3 +492,11 @@ sub admin_commands
 	out irc => 0, "PRIVMSG $config{irc_channel} :* $oldnick\017 stopped the vote";
 	return 1;
 } ],
+
+
+# server error
+[ dp => q{Host_Error:(.*)} => sub {
+	my ($msg) = @_;
+	out irc => 0, "PRIVMSG $config{irc_channel} :\00304SERVER ERROR\017: (\00304$map\017) $msg";
+	return 1;
+} ],
