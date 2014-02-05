@@ -45,7 +45,6 @@ cdtrack $3
 has weapons
 gametype dm
 gametype lms
-gametype arena
 gametype ka
 gametype kh
 gametype ca
