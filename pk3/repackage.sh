@@ -3,7 +3,7 @@
 
 Q3MAP2=q3map2
 Q3MAP2_FLAGS=
-FIX_DIR=~/repackaged
+FIX_DIR=~/unused-pk3/repackaged
 
 source $(dirname $(readlink -se "${BASH_SOURCE[0]}"))/pk3-utils-source.sh
 

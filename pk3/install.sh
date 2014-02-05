@@ -2,7 +2,7 @@
 
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
 INSTALL_DIRS="~/ftp ~/.xonotic/data"
-BROKEN_DIR=~/broken
+BROKEN_DIR=~/unused-pk3/broken
 REPACKAGE_NAME=repackage.sh
 REPACKAGE=$SELFDIR/repackage.sh
 RENAME_SUFFIX=_eac1
