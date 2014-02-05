@@ -348,16 +348,6 @@ sub admin_commands
 }],
 
 
-# !admin
-[ dp => q{\001(.*?)\^7:\s*!admin\s*(.*)} => sub {
-	my ($nick, $message) = map { color_dp2irc $_ } @_;
-	foreach (@admin_highlighs)
-	{
-		out irc => 0, "PRIVMSG $_ :$config{irc_channel} <$nick\017> $message";
-	}
-	return 0;
-} ],
-
 
 # Match score
 [ dp => q{:end} => sub {
@@ -502,9 +492,23 @@ sub admin_commands
 	out irc => 1, "PRIVMSG $config{irc_channel} :$fullmsg";
 	my $i = 1;
 	foreach (@admin_highlighs)
-        {
+	{
 		flood_sleep($i++);
-                out irc => 1, "PRIVMSG $_ :$fullmsg";
-        }
+		out irc => 1, "PRIVMSG $_ :$fullmsg";
+	}
 	return 1;
+} ],
+
+
+# !admin
+[ dp => q{\001(.*?)\^7:\s*!admin\s*(.*)} => sub {
+	my ($nick, $message) = map { color_dp2irc $_ } @_;
+	out irc => 1, "PRIVMSG $config{irc_channel} :<$nick\017> on \00304$map\017: \00304!admin\017 $message";
+	my $i = 1;
+	foreach (@admin_highlighs)
+	{
+		flood_sleep($i++);
+		out irc => 1, "PRIVMSG $_ :$config{irc_channel} (\00304$map\017) <$nick\017> $message";
+	}
+	return 0;
 } ],
