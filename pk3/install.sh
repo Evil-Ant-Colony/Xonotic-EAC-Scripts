@@ -74,15 +74,21 @@ do
 					else
 						installed_noprob=true
 					fi
-					
+
 					for i_d in $INSTALL_DIRS
 					do
+						eval i_d=$i_d # force path expansion
 						installed=true
 						rm -f $i_d/`basename $pk3`
-						cp $pk3 $i_d
+						cp $pk3 $i_d || installed=false
 					done
 					
-					echo -e "\e[34;1m$pk3\e[22m has been installed\e[0m"
+					if $installed
+					then
+						echo -e "\e[34;1m$pk3\e[22m has been installed\e[0m"
+					else
+						echo -e "\e[31;1m$pk3\e[22m has NOT been properly installed\e[0m"
+					fi
 				else
 					echo -e "\e[31;1m$pk3\e[22m is not a map pk3\e[0m"
 				fi
@@ -96,7 +102,7 @@ do
 						rm -f $arg
 						;;
 					delete-same)
-						if $installed_noprob
+						if $installed && $installed_noprob
 						then
 							echo -e "Removing \e[1m$arg\e[0m (Moved to installation dirs)"
 							rm -f $arg

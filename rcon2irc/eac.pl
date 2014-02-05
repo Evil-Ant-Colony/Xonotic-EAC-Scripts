@@ -62,7 +62,6 @@ sub map_n_gametype
 			$game=$gametypes{$game};
 		}
 	}
-#	out irc => 1, "PRIVMSG $config{irc_channel} : Test ($map,$game,$store{map})";
 	return ($map,$game);
 }
 
@@ -233,18 +232,26 @@ sub admin_commands
 	return 0;
 }
 
+sub reircnick
+{
+	my $nick = $store{irc_nick};
+	my $text = "\Q$nick\E";
+	return $text;
+	#return "\Q".$store{irc_nick}."\E";
+}
+
 ################################################
 #             Here be commands                 #
 ################################################
 
 # status
-[ irc => q{:(([^! ]*)![^ ]*) (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}}))(?: |: ?|, ?)(.*)} => sub {
+[ irc => q{:(([^! ]*)![^ ]*) (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{ reircnick() }))(?: |: ?|, ?)(.*)} => sub {
 	my ($hostmask, $nick, $command) = @_;
 	return admin_commands($hostmask, $nick, $command,$config{irc_channel});
 } ],
 
 # IRC admin commands -- private
-[ irc => q{:(([^! ]*)![^ ]*) (?i:PRIVMSG) (?i:(??{$store{irc_nick}})) :(.*)} => sub {
+[ irc => q{:(([^! ]*)![^ ]*) (?i:PRIVMSG) (?i:(??{ reircnick() })) :(.*)} => sub {
 	my ($hostmask, $nick, $command) = @_;
 	return admin_commands($hostmask, $nick, $command,$nick);
 } ],
@@ -308,7 +315,7 @@ sub admin_commands
 # IRC messages to RCON
 
 # Messages starting with [ won't be shown, otherwise everything is sent
-[ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{$store{irc_nick}})(?: |: ?|, ?))?([^[].*)} => sub {
+[ irc => q{:([^! ]*)![^ ]* (?i:PRIVMSG) (?i:(??{$config{irc_channel}})) :(?i:(??{ reircnick() })(?: |: ?|, ?))?([^[].*)} => sub {
 	my ($nick, $message) = @_;
 	$message = dp_esc($message);
 	if ($message =~ /^ACTION(.*)/) 
