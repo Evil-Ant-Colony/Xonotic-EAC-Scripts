@@ -6,7 +6,7 @@ our @color_dp2irc_table = (-1, 4, 9, 7, 12, 11, 13, -1, -1, -1);
 our %color_team2irc_table = (5 => 4, 14 => 12, 13 => 7, 10 => 13);
 
 # Admins, will be notified on !admin
-my @admin_highlighs=('Melanosuchus', 'Floris', 'KproxaPy', 'Cesy', 'IRC-Love');
+my @admin_highlighs=('Melanosuchus', 'Floris', 'KpoxaPy', 'Cesy', 'IRC-Love', 'Ameis');
 
 # Prevent flooding
 # @param $1 an integer value, increase it for multiple calls to this
@@ -258,6 +258,7 @@ sub admin_commands
 # update cvars when a game starts
 [ dp => q{:gamestart:(.*):[0-9.]*} => sub {
 	update_cvars();
+	$map = $1;
 	return 0;
 } ],
 
@@ -497,6 +498,13 @@ sub admin_commands
 # server error
 [ dp => q{Host_Error:(.*)} => sub {
 	my ($msg) = @_;
-	out irc => 0, "PRIVMSG $config{irc_channel} :\00304SERVER ERROR\017: (\00304$map\017) $msg";
+	my $fullmsg="\00304SERVER ERROR\017: (\00304$map\017) $msg";
+	out irc => 1, "PRIVMSG $config{irc_channel} :$fullmsg";
+	my $i = 1;
+	foreach (@admin_highlighs)
+        {
+		flood_sleep($i++);
+                out irc => 1, "PRIVMSG $_ :$fullmsg";
+        }
 	return 1;
 } ],

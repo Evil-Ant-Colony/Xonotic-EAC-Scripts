@@ -2,7 +2,7 @@
 
 readme=https://raw.github.com/MarioSMB/esk-modpack/master/README.md
 dirs="ftp xonotic-data"
-files=$(wget -q -O - $readme | grep -oE "http[^ ]+\.pk3" | grep -vE "quickmenu|hats")
+files=$(wget -q -O - $readme | grep -oE "http[^ ]+\.pk3" | grep -vE "quickmenu|hats|vehicles")
 
 for f in $files
 do
