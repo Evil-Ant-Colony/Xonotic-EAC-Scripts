@@ -210,12 +210,59 @@ sub admin_commands
 	{
 		my ($id, $reason) = ($1, $2);
 		$reason = "no reason" if ( not defined $reason or $reason eq "" );
-		my $dpreason = dp_esc("irc $dpnick: $reason");
+		my $dpreason = dp_esc("[IRC] $dpnick: $reason");
 		out dp => 0, "kick # $id $dpreason";
 		my $slotnik = "playerslot_$id";
-		out irc => 0, "PRIVMSG $chan :kicked #$id (@{[color_dp2irc $store{$slotnik}{name}]}\017 @ $store{$slotnik}{ip}) ($reason)";
+		out irc => 1, "PRIVMSG $chan :kicked #$id (@{[color_dp2irc $store{$slotnik}{name}]}\017 @ $store{$slotnik}{ip}) ($reason)";
 		return 1;
 	}
+
+	if($command eq "banlist")
+	{
+		my $banlist =
+			join ", ",
+			map { "$_ ($store{bans}[$_]{ip}, $store{bans}[$_]{time}s)" }
+			0..@{$store{bans} || []}-1;
+		$banlist = "no bans" if $banlist eq "";
+		out irc => 1, "PRIVMSG $chan :$banlist";
+		return 0;
+	}
+	
+	if($command =~ /^ban ([^ ]+)(?: (\d+|inf)(?: (.*))?)?$/)
+	{
+		my ($ip, $bantime, $reason) = ($1, $2, $3);
+		$reason = "no reason" if ( not defined $reason or $reason eq "" );
+		$bantime = "inf" if ( not defined $bantime or $bantime eq "" );
+		my $dpreason = dp_esc("[IRC] $dpnick: $reason");
+		out dp => 0, "ban $ip $bantime $dpreason";
+		out irc => 1, "PRIVMSG $chan :banned \00304$ip\017 for $bantime seconds ($reason)"
+		return 0;
+	}
+	
+	if($command =~ /^unban (\d+)$/)
+	{
+		my $id = $1;
+		out dp => 0, "unban $id";
+		out irc => 1, "PRIVMSG $chan :Removed ban \00304$id\017"
+		return 0;
+	}
+	
+	if($command =~ /^(endmatch|restart)$/)
+	{
+		my $cmd = $1;
+		out dp => 0, $cmd;
+		return 0;
+	}
+
+	if($command =~ /^((?:un)?mute) (\d+)$/)
+	{
+		my ($cmd,$id) = ($1, $2);
+		out dp => 0, "$cmd $id";
+		my $slotnik = "playerslot_$id";
+		out irc => 1, "PRIVMSG $chan :${cmd}d $id (@{[color_dp2irc $store{$slotnik}{name}]}\017 @ $store{$slotnik}{ip})";
+		return 0;
+	}
+
 	
 	if($command =~ /^vcall (.+)$/)
 	{
