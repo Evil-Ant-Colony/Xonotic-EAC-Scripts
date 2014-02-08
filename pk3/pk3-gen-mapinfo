@@ -1,7 +1,6 @@
 #!/bin/bash
 gametypes="dm tdm ft inf kh"
-out_dir=~/.xonotic/data/maps
-
+out_dir=$XONOTIC_DATA_DIR/maps
 
 source $(dirname $(readlink -se "${BASH_SOURCE[0]}"))/pk3-utils-source.sh
 

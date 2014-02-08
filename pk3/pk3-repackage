@@ -3,7 +3,7 @@
 
 Q3MAP2=q3map2
 Q3MAP2_FLAGS=
-FIX_DIR=~/unused-pk3/repackaged
+FIX_DIR=$MOVETO_ROOT/repackaged
 
 source $(dirname $(readlink -se "${BASH_SOURCE[0]}"))/pk3-utils-source.sh
 
@@ -114,6 +114,12 @@ function pk3_fix()
 {
 	echo_color 36 Fixing $1
 	package=`basename $1 .pk3`
+	
+	if [ -e $FIX_DIR/$package ]
+	then
+		rm -rf $FIX_DIR/$package
+	fi
+	
 	mkdir -p $FIX_DIR/$package
 	unzip -u -d $FIX_DIR/$package $1 >/dev/null
 	cwd=`pwd`
@@ -235,7 +241,7 @@ function pk3_fix_list()
 }
 
 action=pk3_check
-RENAME_SUFFIX=
+#RENAME_SUFFIX=
 fixable_list=
 
 if [ $# -eq 0 ]

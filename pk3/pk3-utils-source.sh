@@ -1,4 +1,24 @@
 
+# Directory containing these scripts
+SCRIPT_INSTALLDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
+
+
+#suffix used to rename pk3s
+RENAME_SUFFIX=_please_change_this_in_config
+# rood directory where unwanted pk3 are to be moved
+MOVETO_ROOT=~
+#main xonotic data directory
+XONOTIC_DATA_DIR=~/.xonotic/data
+#all directory which contain pk3s
+ALL_PK3_DIRS=($XONOTIC_DATA_DIR)
+
+if [ -f "$SCRIPT_INSTALLDIR/config.sh" ]
+then
+	#use this to overwrite any of the variables defined above
+	source $SCRIPT_INSTALLDIR/config.sh
+fi
+
+
 # @brief Prints a list of files in a pk3
 # @param $1 pk3 name
 function pk3_files()

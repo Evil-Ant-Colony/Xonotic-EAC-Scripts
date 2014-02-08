@@ -1,11 +1,12 @@
 #!/bin/bash
 
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
-INSTALL_DIRS="~/ftp ~/.xonotic/data"
-BROKEN_DIR=~/unused-pk3/broken
-REPACKAGE_NAME=repackage.sh
-REPACKAGE=$SELFDIR/repackage.sh
-RENAME_SUFFIX=_eac1
+BROKEN_DIR=$MOVETO_ROOT/broken
+
+REPACKAGE_NAME=pk3-repackage
+REPACKAGE=$SELFDIR/$REPACKAGE_NAME
+GEN_MAPINFO=$SELFDIR/pk3-gen-mapinfo
+
 
 source $SELFDIR/pk3-utils-source.sh
 
@@ -23,7 +24,7 @@ function show_help()
 	echo -e "\tpk3s that are broken or in an invalid format will be moved to" 
 	echo -e "\t\e[1m$BROKEN_DIR\e[0m."
 	echo -e "\tThen the fixed pk3s will be installed in the following directories:"
-	for i_d in $INSTALL_DIRS
+	for i_d in ${ALL_PK3_DIRS[@]}
 	do
 		echo -e "\t * \e[1m$i_d\e[0m"
 	done
@@ -74,17 +75,19 @@ do
 					else
 						installed_noprob=true
 					fi
+					
+					pk3_basename=`basename $pk3`
 
-					for i_d in $INSTALL_DIRS
+					for i_d in ${ALL_PK3_DIRS[@]}
 					do
-						eval i_d=$i_d # force path expansion
 						installed=true
-						rm -f $i_d/`basename $pk3`
+						rm -f $i_d/$pk3_basename
 						cp $pk3 $i_d || installed=false
 					done
 					
 					if $installed
 					then
+						$GEN_MAPINFO $i_d/$pk3_basename
 						echo -e "\e[34;1m$pk3\e[22m has been installed\e[0m"
 					else
 						echo -e "\e[31;1m$pk3\e[22m has NOT been properly installed\e[0m"

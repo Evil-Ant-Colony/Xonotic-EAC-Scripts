@@ -1,14 +1,12 @@
 #!/bin/bash
 
-SEARCH_DIR=~/.xonotic/data
-
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
 source $SELFDIR/pk3-utils-source.sh
 
 # list all the pk3 to be searched
 function list_pk3()
 {
-	ls $SEARCH_DIR/*.pk3
+	ls $XONOTIC_DATA_DIR/*.pk3
 }
 
 # Search for a match in the pk3 name
