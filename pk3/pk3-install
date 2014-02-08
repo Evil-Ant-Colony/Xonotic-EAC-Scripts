@@ -1,5 +1,8 @@
 #!/bin/bash
 
+install_serverpacks=false
+delete_behaviour=delete-same
+
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
 source $SELFDIR/pk3-utils-source.sh
 
@@ -48,9 +51,6 @@ then
 	show_help
 	exit
 fi
-
-install_serverpacks=false
-delete_behaviour=delete-same
 
 for arg in $@
 do

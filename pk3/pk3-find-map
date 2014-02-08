@@ -3,10 +3,12 @@
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
 source $SELFDIR/pk3-utils-source.sh
 
+SEARCH_DIR=$XONOTIC_DATA_DIR
+
 # list all the pk3 to be searched
 function list_pk3()
 {
-	ls $XONOTIC_DATA_DIR/*.pk3
+	ls $SEARCH_DIR/*.pk3
 }
 
 # Search for a match in the pk3 name
@@ -54,12 +56,16 @@ function show_help()
 	echo -e "\t *:\e[1mname\e[0m:Only search pk3 file names
 \t *:\e[1mcontents\e[0m:Search for a bsp inside the pk3
 \t *:\e[1mboth\e[0m:Search in the file names, if this fails, in the contents" | column -t -c 3 -s ":"
+	echo -e "\e[1m--dir=\e[22;4mdirectory\e[0m"
+	echo -e "\tSearch in \e[4mdirectory\e[0m (default is $XONOTIC_DATA_DIR)"
+	echo
+	echo -e "\e[1mACTIONS\e[0m"
 	echo -e "\e[1m--list-short\e[0m|\e[1m-ls\e[0m"
 	echo -e "\tDisplay pk3 names (default behaviour)"
         echo -e "\e[1m--list\e[0m|\e[1m-l\e[0m"
         echo -e "\tDisplay full path for the pk3 files"
 	echo -e "\e[1m--move=\e[22;4mdestination\e[0m"
-	echo -e "\tMove the matched files to \e[4mdestination\e[0m"
+	echo -e "\tMove the matched files to \e[4mdestination\e[0m (relative to \$MOVETO_ROOT)"
 	echo -e "\e[1m--cmd=\e[22;4mcommand\e[0m"
 	echo -e "\tApply \e[4mcommand\e[0m to every matched file"
 	echo
@@ -121,6 +127,9 @@ do
 			;;
 		--cmd=*)
 			out_function=${arg#*=}
+			;;
+		--dir=*)
+			eval SEARCH_DIR=${arg#*=}
 			;;
 		*)
 			for map in $($search_function $arg)
