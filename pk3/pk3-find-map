@@ -54,12 +54,38 @@ function show_help()
 	echo -e "\t *:\e[1mname\e[0m:Only search pk3 file names
 \t *:\e[1mcontents\e[0m:Search for a bsp inside the pk3
 \t *:\e[1mboth\e[0m:Search in the file names, if this fails, in the contents" | column -t -c 3 -s ":"
+	echo -e "\e[1m--list-short\e[0m|\e[1m-ls\e[0m"
+	echo -e "\tDisplay pk3 names (default behaviour)"
+        echo -e "\e[1m--list\e[0m|\e[1m-l\e[0m"
+        echo -e "\tDisplay full path for the pk3 files"
+	echo -e "\e[1m--move=\e[22;4mdestination\e[0m"
+	echo -e "\tMove the matched files to \e[4mdestination\e[0m"
+	echo -e "\e[1m--cmd=\e[22;4mcommand\e[0m"
+	echo -e "\tApply \e[4mcommand\e[0m to every matched file"
 	echo
+}
+
+
+function action_move_to()
+{
+	pk3=$2
+	dest=$MOVETO_ROOT/$1
+	pk3base=`basename $pk3`
+	if [ ! -d $dest ]
+	then
+		mkdir -p $dest
+	fi
+	echo "$pk3base => $dest"
+	mv $pk3 $dest
+	for d in ${ALL_PK3_DIRS[@]}
+	do
+		rm -f $d/$pk3base
+	done
 }
 
 search_inside=""
 search_function=search_pk3_fallback
-out_function=echo
+out_function=basename
 
 for arg in $@
 do
@@ -84,8 +110,23 @@ do
 # 					;;
 			esac
 			;;
+		--list|-l)
+			out_function=echo
+			;;
+		--list-short|-ls)
+			out_function=basename
+			;;
+		--move=*)
+			out_function="action_move_to ${arg#*=} "
+			;;
+		--cmd=*)
+			out_function=${arg#*=}
+			;;
 		*)
-			$out_function $($search_function $arg)
+			for map in $($search_function $arg)
+			do
+				$out_function $map
+			done
 			;;
 	esac
 done
