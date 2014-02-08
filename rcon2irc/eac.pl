@@ -220,11 +220,14 @@ sub admin_commands
 	if($command eq "banlist")
 	{
 		my $found = 0;
-		for my $ban (@{$store{bans})
+		for (my $ban = 0; $ban < @{$store{bans_new}}; $ban++ )
 		{
-			$found++;
-			out irc => 1, "PRIVMSG $chan :#$ban: $store{bans}[$ban]{ip} for $store{bans}[$ban]{time} seconds";
-			flood_sleep($found);
+			if ( defined $store{bans_new}[$ban]{ip} && $store{bans_new}[$ban]{ip} != "" )
+			{
+				$found++;
+				out irc => 1, "PRIVMSG $chan :#$ban: $store{bans_new}[$ban]{ip} for $store{bans_new}[$ban]{time} seconds";
+				flood_sleep($found);
+			}
 		}
 		if ( $found == 0 )
 		{
@@ -245,6 +248,8 @@ sub admin_commands
 		my $dpreason = dp_esc("[IRC] $dpnick: $reason");
 		out dp => 0, "ban $ip $bantime $dpreason";
 		out irc => 1, "PRIVMSG $chan :banned \00304$ip\017 for $bantime seconds ($reason)";
+		$store{bans_new} = [];
+		out dp => 0, "banlist";
 		return 1;
 	}
 	
@@ -252,7 +257,9 @@ sub admin_commands
 	{
 		my $id = $1;
 		out dp => 0, "unban $id";
-		out irc => 1, "PRIVMSG $chan :Removed ban \00304$id\017";
+		out irc => 1, "PRIVMSG $chan :Removed ban #$id";
+		$store{bans_new} = [];
+		out dp => 0, "banlist";
 		return 1;
 	}
 	
@@ -578,7 +585,7 @@ sub reircnick
 
 # retrieve list of banned hosts
 [ dp => q{\s*#(\d+): (\S+) is still banned for (\S+) seconds\s*} => sub {
-	return 0 unless $store{status_waiting} < 0;
+	#return 0 unless $store{status_waiting} < 0;
 	my ($id, $ip, $time) = @_;
 	$store{bans_new} = [] if $id == 0;
 	$store{bans_new}[$id] = { ip => $ip, 'time' => $time };
