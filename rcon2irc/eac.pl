@@ -219,13 +219,22 @@ sub admin_commands
 
 	if($command eq "banlist")
 	{
-		my $banlist =
-			join ", ",
-			map { "$_ ($store{bans}[$_]{ip}, $store{bans}[$_]{time}s)" }
-			0..@{$store{bans} || []}-1;
-		$banlist = "no bans" if $banlist eq "";
-		out irc => 1, "PRIVMSG $chan :$banlist";
-		return 0;
+		my $found = 0;
+		for my $ban (@{$store{bans}))
+		{
+			$found++;
+			out irc => 1, "PRIVMSG $chan :#$ban: $store{bans}[$ban]{ip} for $store{bans}[$ban]{time} seconds";
+			flood_sleep($found);
+		}
+		if ( $found == 0 )
+		{
+			out irc => 1, "PRIVMSG $chan :(no bans)";
+		}
+		else
+		{
+			out irc => 1, "PRIVMSG $chan :(end ban list)";
+		}
+		return 1;
 	}
 	
 	if($command =~ /^ban ([^ ]+)(?: (\d+|inf)(?: (.*))?)?$/)
@@ -236,7 +245,7 @@ sub admin_commands
 		my $dpreason = dp_esc("[IRC] $dpnick: $reason");
 		out dp => 0, "ban $ip $bantime $dpreason";
 		out irc => 1, "PRIVMSG $chan :banned \00304$ip\017 for $bantime seconds ($reason)";
-		return 0;
+		return 1;
 	}
 	
 	if($command =~ /^unban (\d+)$/)
@@ -244,14 +253,14 @@ sub admin_commands
 		my $id = $1;
 		out dp => 0, "unban $id";
 		out irc => 1, "PRIVMSG $chan :Removed ban \00304$id\017";
-		return 0;
+		return 1;
 	}
 	
 	if($command =~ /^(endmatch|restart)$/)
 	{
 		my $cmd = $1;
 		out dp => 0, $cmd;
-		return 0;
+		return 1;
 	}
 
 	if($command =~ /^((?:un)?mute) (\d+)$/)
@@ -260,7 +269,7 @@ sub admin_commands
 		out dp => 0, "$cmd $id";
 		my $slotnik = "playerslot_$id";
 		out irc => 1, "PRIVMSG $chan :${cmd}d $id (@{[color_dp2irc $store{$slotnik}{name}]}\017 @ $store{$slotnik}{ip})";
-		return 0;
+		return 1;
 	}
 
 	
@@ -564,5 +573,15 @@ sub reircnick
 		flood_sleep($i++);
 		out irc => 1, "PRIVMSG $_ :$config{irc_channel} (\00304$map\017) <$nick\017> $message";
 	}
+	return 0;
+} ],
+
+# retrieve list of banned hosts
+[ dp => q{\s*#(\d+): (\S+) is still banned for (\S+) seconds\s*} => sub {
+	return 0 unless $store{status_waiting} < 0;
+	my ($id, $ip, $time) = @_;
+	$store{bans_new} = [] if $id == 0;
+	$store{bans_new}[$id] = { ip => $ip, 'time' => $time };
+	# out irc => 1, "PRIVMSG $config{irc_channel} :detected ban #$id: $ip for $time seconds";
 	return 0;
 } ],
