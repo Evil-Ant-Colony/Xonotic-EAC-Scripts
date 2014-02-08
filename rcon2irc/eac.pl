@@ -235,7 +235,7 @@ sub admin_commands
 		$bantime = "inf" if ( not defined $bantime or $bantime eq "" );
 		my $dpreason = dp_esc("[IRC] $dpnick: $reason");
 		out dp => 0, "ban $ip $bantime $dpreason";
-		out irc => 1, "PRIVMSG $chan :banned \00304$ip\017 for $bantime seconds ($reason)"
+		out irc => 1, "PRIVMSG $chan :banned \00304$ip\017 for $bantime seconds ($reason)";
 		return 0;
 	}
 	
@@ -243,7 +243,7 @@ sub admin_commands
 	{
 		my $id = $1;
 		out dp => 0, "unban $id";
-		out irc => 1, "PRIVMSG $chan :Removed ban \00304$id\017"
+		out irc => 1, "PRIVMSG $chan :Removed ban \00304$id\017";
 		return 0;
 	}
 	
