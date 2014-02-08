@@ -220,7 +220,7 @@ sub admin_commands
 	if($command eq "banlist")
 	{
 		my $found = 0;
-		for my $ban (@{$store{bans}))
+		for my $ban (@{$store{bans})
 		{
 			$found++;
 			out irc => 1, "PRIVMSG $chan :#$ban: $store{bans}[$ban]{ip} for $store{bans}[$ban]{time} seconds";
