@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
+source $SELFDIR/pk3-utils-source.sh
+
 readme=https://raw.github.com/MarioSMB/esk-modpack/master/README.md
 files=$(wget -q -O - $readme | grep -oE "http[^ ]+\.pk3" | grep -vE "quickmenu|hats|vehicles")
 

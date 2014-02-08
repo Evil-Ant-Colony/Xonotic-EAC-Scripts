@@ -1,14 +1,13 @@
 #!/bin/bash
 
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
+source $SELFDIR/pk3-utils-source.sh
+
 BROKEN_DIR=$MOVETO_ROOT/broken
 
 REPACKAGE_NAME=pk3-repackage
 REPACKAGE=$SELFDIR/$REPACKAGE_NAME
 GEN_MAPINFO=$SELFDIR/pk3-gen-mapinfo
-
-
-source $SELFDIR/pk3-utils-source.sh
 
 function show_help()
 {

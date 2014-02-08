@@ -1,8 +1,11 @@
 #!/bin/bash
+
+SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
+source $SELFDIR/pk3-utils-source.sh
+
 gametypes="dm tdm ft inf kh"
 out_dir=$XONOTIC_DATA_DIR/maps
 
-source $(dirname $(readlink -se "${BASH_SOURCE[0]}"))/pk3-utils-source.sh
 
 function mapinfo()
 {

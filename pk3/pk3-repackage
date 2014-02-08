@@ -1,11 +1,13 @@
 #!/bin/bash
 #set -x
 
+SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
+source $SELFDIR/pk3-utils-source.sh
+
 Q3MAP2=q3map2
 Q3MAP2_FLAGS=
 FIX_DIR=$MOVETO_ROOT/repackaged
 
-source $(dirname $(readlink -se "${BASH_SOURCE[0]}"))/pk3-utils-source.sh
 
 # @brief check whether a pk3 contains all needed files for the given map
 # @pre the pk3 contains maps/$2.bsp
@@ -114,7 +116,7 @@ function pk3_fix()
 {
 	echo_color 36 Fixing $1
 	package=`basename $1 .pk3`
-	
+
 	if [ -e $FIX_DIR/$package ]
 	then
 		rm -rf $FIX_DIR/$package
