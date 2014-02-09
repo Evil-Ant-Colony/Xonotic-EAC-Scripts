@@ -1,7 +1,11 @@
 #!/bin/bash
 
+FIND_MAP_SEARCH_FUNCTION=search_pk3_fallback
+FIND_MAP_OUT_FUNCTION=basename
+FIND_MAP_SHOW_SUMMARY=false
+
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
-source $SELFDIR/pk3-utils-source.sh
+source $SELFDIR/source-pk3-utils.sh
 
 SEARCH_DIR=$XONOTIC_DATA_DIR
 
@@ -58,16 +62,24 @@ function show_help()
 \t *:\e[1mboth\e[0m:Search in the file names, if this fails, in the contents" | column -t -c 3 -s ":"
 	echo -e "\e[1m--dir=\e[22;4mdirectory\e[0m"
 	echo -e "\tSearch in \e[4mdirectory\e[0m (default is $XONOTIC_DATA_DIR)"
+	echo -e "\e[1m--summary\e[0m|\e[1m-s\e[0m"
+	echo -e "\tEnable printing a summary (the total number of matched maps) at the end (default off)"
+	echo -e "\e[1m--no-summary\e[0m"
+	echo -e "\tDisable the summary"
 	echo
 	echo -e "\e[1mACTIONS\e[0m"
 	echo -e "\e[1m--list-short\e[0m|\e[1m-ls\e[0m"
 	echo -e "\tDisplay pk3 names (default behaviour)"
-        echo -e "\e[1m--list\e[0m|\e[1m-l\e[0m"
-        echo -e "\tDisplay full path for the pk3 files"
+	echo -e "\e[1m--list\e[0m|\e[1m-l\e[0m"
+	echo -e "\tDisplay full path for the pk3 files"
 	echo -e "\e[1m--move=\e[22;4mdestination\e[0m"
 	echo -e "\tMove the matched files to \e[4mdestination\e[0m (relative to \$MOVETO_ROOT)"
 	echo -e "\e[1m--cmd=\e[22;4mcommand\e[0m"
 	echo -e "\tApply \e[4mcommand\e[0m to every matched file"
+	echo -e "\e[1m--quiet\e[0m|\e[1m-q\e[0m"
+	echo -e "\tDon't do anything with the found maps"
+	echo -e "\e[1mEXIT VALUE\e[0m"
+	echo -e "\tzero if it has found some map, non-zero otherwise"
 	echo
 }
 
@@ -89,9 +101,13 @@ function action_move_to()
 	done
 }
 
-search_inside=""
-search_function=search_pk3_fallback
-out_function=basename
+function action_noop()
+{
+	return 0
+}
+
+declare -i found_count
+let found_count=0
 
 for arg in $@
 do
@@ -103,39 +119,60 @@ do
 		--search-mode=*)
 			case ${arg#*=} in
 				name)
-					search_function=search_pk3_name
+					FIND_MAP_SEARCH_FUNCTION=search_pk3_name
 					;;
 				contents)
-					search_function=search_pk3_contents
+					FIND_MAP_SEARCH_FUNCTION=search_pk3_contents
 					;;
 				both)
-					search_function=search_pk3_fallback
+					FIND_MAP_SEARCH_FUNCTION=search_pk3_fallback
 					;;
 # 				*)
 # 					echo "Unknown search mode: ${arg#*=}"
 # 					;;
 			esac
 			;;
+		--summary|-s)
+			FIND_MAP_SHOW_SUMMARY=true
+			;;
+		--no-summary)
+			FIND_MAP_SHOW_SUMMARY=false
+			;;
+		--quiet|-q)
+			FIND_MAP_OUT_FUNCTION=action_noop
+			;;
 		--list|-l)
-			out_function=echo
+			FIND_MAP_OUT_FUNCTION=echo
 			;;
 		--list-short|-ls)
-			out_function=basename
+			FIND_MAP_OUT_FUNCTION=basename
 			;;
 		--move=*)
-			out_function="action_move_to ${arg#*=} "
+			FIND_MAP_OUT_FUNCTION="action_move_to ${arg#*=} "
 			;;
 		--cmd=*)
-			out_function=${arg#*=}
+			FIND_MAP_OUT_FUNCTION=${arg#*=}
 			;;
 		--dir=*)
 			eval SEARCH_DIR=${arg#*=}
 			;;
 		*)
-			for map in $($search_function $arg)
+			for map in $($FIND_MAP_SEARCH_FUNCTION $arg)
 			do
-				$out_function $map
+				let found_count++
+				$FIND_MAP_OUT_FUNCTION $map
 			done
 			;;
 	esac
 done
+
+if $FIND_MAP_SHOW_SUMMARY
+then
+	echo "Found $found_count maps"
+fi
+
+
+[ $found_count -gt 0 ]
+
+
+

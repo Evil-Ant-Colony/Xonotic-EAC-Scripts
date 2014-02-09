@@ -1,20 +1,21 @@
 #!/bin/bash
 
-SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
-source $SELFDIR/pk3-utils-source.sh
+GEN_MAPINFO_GAMETYPES="dm tdm ft kh"
 
-gametypes="dm tdm ft inf kh"
-out_dir=$XONOTIC_DATA_DIR/maps
+SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
+source $SELFDIR/source-pk3-utils.sh
+
+GEN_MAPINFO_OUT_DIR=$XONOTIC_DATA_DIR/maps
 
 
 function mapinfo()
 {
-	if [ ! -d $out_dir ]
+	if [ ! -d $GEN_MAPINFO_OUT_DIR ]
 	then
-		mkdir -p $out_dir
+		mkdir -p $GEN_MAPINFO_OUT_DIR
 	fi
 	
-	echo Checking $1...
+	echo Checking Mapinfo for $1...
 	
 	if ! pk3_is_map $1
 	then
@@ -29,7 +30,7 @@ function mapinfo()
 	for map in $maps
 	do
 		map_name=`basename $map .bsp`
-		mapinfo_file=$out_dir/$map_name.mapinfo
+		mapinfo_file=$GEN_MAPINFO_OUT_DIR/$map_name.mapinfo
 		echo "    Generating mapinfo for $map"
 		
 		if [ ! -f $mapinfo_file ]
@@ -38,11 +39,11 @@ function mapinfo()
 			then
 				unzip -p $1 maps/$map_name.mapinfo >$mapinfo_file
 			else
-				create_mapinfo $out_dir $map_name 7
+				create_mapinfo $GEN_MAPINFO_OUT_DIR $map_name 7
 			fi
 		fi
 		
-		for gametype in $gametypes
+		for gametype in $GEN_MAPINFO_GAMETYPES
 		do
 			if ! grep -qE "^(game)type\s+$gametype" $mapinfo_file
 			then

@@ -78,3 +78,19 @@ gametype inf
 // optional: hidden
 MAPINFO
 }
+
+# @brief Ask the user for permission
+# @param $1 (optional) Prompt
+# @note The empty string and anything starting with Y will be accepted
+function ask_permission
+{
+	if [ -z "$1" ]
+	then
+		prompt="Are you sure?"
+	else
+		prompt=$1
+	fi
+	
+	read -p "$prompt [Y]|n " && [ -z "$REPLY" ] || ( echo $REPLY | grep -qi "^y" )
+}
+

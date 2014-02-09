@@ -1,16 +1,17 @@
 #!/bin/bash
 
-install_serverpacks=false
-delete_behaviour=delete-same
+INSTALL_SERVERPACKS=false
+INSTALL_DELETE_BEHAVIOUR=delete-same
 
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
-source $SELFDIR/pk3-utils-source.sh
+source $SELFDIR/source-pk3-utils.sh
 
 BROKEN_DIR=$MOVETO_ROOT/broken
 
 REPACKAGE_NAME=pk3-repackage
 REPACKAGE=$SELFDIR/$REPACKAGE_NAME
 GEN_MAPINFO=$SELFDIR/pk3-gen-mapinfo
+FIND_MAP=$SELFDIR/pk3-find-map
 
 function show_help()
 {
@@ -65,37 +66,58 @@ do
 				echo -e "\e[31;1m$pk3\e[22m is a bad archive\e[0m"
 				mv $pk3 $BROKEN_DIR
 			else
-				if $install_serverpacks || pk3_is_map $pk3
+				if $INSTALL_SERVERPACKS || pk3_is_map $pk3
 				then
-					if ! $REPACKAGE just-check $pk3
-					then
-						$REPACKAGE fix --suffix=$RENAME_SUFFIX $pk3
-						pk3=`$REPACKAGE name --suffix=$RENAME_SUFFIX $pk3`
-					else
-						installed_noprob=true
-					fi
-					
-					pk3_basename=`basename $pk3`
-
-					for i_d in ${ALL_PK3_DIRS[@]}
+				
+					echo -e "\e[1m$pk3\e[0m"
+					echo "Checking for installed maps..."
+					declare -i already_installed
+					let already_installed=0
+					for map in $(pk3_maps $pk3)
 					do
-						installed=true
-						rm -f $i_d/$pk3_basename
-						cp $pk3 $i_d || installed=false
+						map_base=$(basename $pk3 .pk3)
+						if $FIND_MAP $map_base
+						then
+							let already_installed++
+						fi
 					done
 					
-					if $installed
+					echo "$already_installed maps may be already installed."
+					
+					if [ $already_installed -eq 0 ] || ask_permission "Install anyway?"
 					then
-						$GEN_MAPINFO $i_d/$pk3_basename
-						echo -e "\e[34;1m$pk3\e[22m has been installed\e[0m"
-					else
-						echo -e "\e[31;1m$pk3\e[22m has NOT been properly installed\e[0m"
-					fi
+						if ! $REPACKAGE just-check $pk3
+						then
+							$REPACKAGE fix --suffix=$RENAME_SUFFIX $pk3
+							pk3=`$REPACKAGE name --suffix=$RENAME_SUFFIX $pk3`
+						else
+							installed_noprob=true
+						fi # repackage
+						
+						pk3_basename=`basename $pk3`
+
+						for i_d in ${ALL_PK3_DIRS[@]}
+						do
+							installed=true
+							rm -f $i_d/$pk3_basename
+							cp $pk3 $i_d || installed=false
+						done
+						
+						if $installed
+						then
+							$GEN_MAPINFO $i_d/$pk3_basename
+							echo -e "\e[34;1m$pk3\e[22m has been installed\e[0m"
+						else
+							echo -e "\e[31;1m$pk3\e[22m has NOT been properly installed\e[0m"
+						fi # installed
+						
+					fi # not already installed or user said OK
+					
 				else
 					echo -e "\e[31;1m$pk3\e[22m is not a map pk3\e[0m"
-				fi
+				fi # install serverpacks or is map
 				
-				case $delete_behaviour in
+				case $INSTALL_DELETE_BEHAVIOUR in
 					ask)
 						rm -i $arg
 						;;
@@ -126,19 +148,19 @@ do
 						;;
 				esac
 					
-			fi
+			fi # pk3 is a zip file
 			;;
 		help|--help|-h)
 			show_help
 			;;
 		--server-pk3|\+s)
-			install_serverpacks=true
+			INSTALL_SERVERPACKS=true
 			;;
 		--no-server-pk3|-s)
-			install_serverpacks=false
+			INSTALL_SERVERPACKS=false
 			;;
 		--delete=*)
-			delete_behaviour=${arg#*=}
+			INSTALL_DELETE_BEHAVIOUR=${arg#*=}
 			;;
 		*)
 			echo Skipping unknown option $arg

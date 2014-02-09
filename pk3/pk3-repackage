@@ -2,7 +2,7 @@
 #set -x
 
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
-source $SELFDIR/pk3-utils-source.sh
+source $SELFDIR/source-pk3-utils.sh
 
 Q3MAP2=q3map2
 Q3MAP2_FLAGS=
