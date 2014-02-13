@@ -292,6 +292,12 @@ sub admin_commands
 		return 1;
 	}
 
+	if ($command  eq "reload")
+	{
+		out dp => 1, "reload_config";
+		return 1;
+	}
+
 	return 0;
 }
 
