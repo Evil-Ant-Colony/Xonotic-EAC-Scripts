@@ -147,7 +147,7 @@ sub player_status
 	
 	if(!$foundany)
 	{
-		out irc => 0, "PRIVMSG $chan :no nicknames match";
+		out irc => 0, "PRIVMSG $chan :no player found";
 	}
 	
 	my ($map,$game) = map_n_gametype();
@@ -155,6 +155,31 @@ sub player_status
 	out irc => 1, "PRIVMSG $chan :Players: \00304$real_active\017 active, \00304$real_spect\017 spectators, \00304$bots\017 bots, \00304$player_total\017/$store{slots_max} total";
 	out irc => 1, "PRIVMSG $chan :Map: \00304$map\017, Game: \00304$game\017, Nades: \00304".($g_nades?"on":"off")."\017, Zombie: \00304".($g_za?"on":"off")."\017";
 
+}
+
+# Show player status
+# @param $1 output channel
+sub player_status_lite
+{
+	my ($chan) = @_;
+	
+	my $found = 0;
+	for my $slot(@{$store{playerslots_active} || []})
+	{
+		my $s = $store{"playerslot_$slot"};
+		next unless $s;
+		
+		out irc => 1, sprintf 'PRIVMSG %s :%s', $chan, color_dp2irc $s->{name};
+		++$found;
+		flood_sleep($found+1);
+		
+	}
+	
+	if(!$found)
+	{
+		out irc => 0, "PRIVMSG $chan :the server is empty D:";
+	}
+	
 }
 
 sub admin_commands
@@ -184,6 +209,12 @@ sub admin_commands
 				}
 			}
 		}
+		return 1;
+	}
+	
+	if ( $command eq "userscomplainus" )
+	{
+		player_status_lite($chan);
 		return 1;
 	}
 	
@@ -294,11 +325,13 @@ sub admin_commands
 
 	if ($command  eq "reload")
 	{
-		out dp => 1, "reload_config";
+		out dp => 0, "reload_config";
 		return 1;
 	}
 
-	return 0;
+	out irc => 1, "PRIVMSG $chan :Unknown command: \00304$command\017";
+
+	return 1;
 }
 
 sub reircnick
