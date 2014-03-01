@@ -47,6 +47,8 @@ my %gametypes = (
 	"ft" => "freezetag",
 	"ctf" => "capture the flag",
 	"inf" => "infection",
+	"dom" => "domination",
+	"kh" => "keyhunt"
 );
 
 sub map_n_gametype
