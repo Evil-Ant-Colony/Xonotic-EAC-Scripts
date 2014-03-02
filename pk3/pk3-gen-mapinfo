@@ -43,9 +43,17 @@ function mapinfo()
 			fi
 		fi
 		
+		sed -i -e 's/^type /gametype /g' \
+			-e 's/^gametype freezetag/gametype ft/g' \
+			-e 's/^gametype keepaway/gametype ka/g' \
+			-e 's/^gametype nexball/gametype nb/g' \
+			-e 's/^gametype invasion/gametype inv/g' \
+			-r -e '/^gametype (rune|arena)/d' \
+			$mapinfo_file
+		
 		for gametype in $GEN_MAPINFO_GAMETYPES
 		do
-			if ! grep -qE "^(game)type\s+$gametype" $mapinfo_file
+			if ! grep -qE "^gametype\s+$gametype" $mapinfo_file
 			then
 				echo "        Adding $gametype"
 				echo "gametype $gametype" >>$mapinfo_file
