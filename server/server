@@ -169,7 +169,10 @@ case $1 in
 		command=tmux_exec
 	;;
 	irc)
-		command=tmux_exec
+		command=tmux_irc
+	;;
+	view)
+		command=tmux_server
 	;;
 	dump)
 		command=dump_server

@@ -12,6 +12,6 @@ _eac_server_autocomplete()
 		;;
 	esac
 
-	COMPREPLY=( $( compgen -W 'inline ls list cmd exec irc dump register' -- "$cur" ) )
+	COMPREPLY=( $( compgen -W 'inline ls list cmd exec irc view dump register' -- "$cur" ) )
 }
 complete -F _eac_server_autocomplete server
