@@ -1,8 +1,8 @@
 #!/bin/bash
 
 SERVERS=()
-GAME_CMD="/opt/xonotic run dedicated"
-GAME_PARAMS="-userdir ~/.xonotic -game data -game data/pk3"
+GAME_CMD="/opt/xonotic/all run dedicated"
+GAME_PARAMS="-userdir ~/.xonotic -game data/pk3 -game data"
 WRITABLE_VARS=(GAME_CMD GAME_PARAMS)
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
 CONFIG_FILE="$SELFDIR/server.conf"
@@ -43,7 +43,6 @@ function server_var()
 	fi
 	return 1
 }
-
 
 function is_server()
 {
@@ -87,7 +86,7 @@ function tmux_exec()
 {
 	if is_server $1 
 	then
-		tmux send-keys -t $1 "$2 " Enter
+		tmux send-keys -t $1 "$2" Enter
 		return 0
 	fi
 	return 1
@@ -112,15 +111,48 @@ function tmux_irc()
 	fi
 	return 1
 }
+function tmux_irc()
+{
+        if is_server $1 
+        then
+                tmux attach -t $1-irc
+                return 0
+        fi
+        return 1
+}
 
-function dump_server()
+function server_quit()
 {
 	if is_server $1 
 	then
-		echo register_server $1 $(server_var SESSION $1) $(server_var CONFIG $1) 
+		tmux_exec $1 quit
 		return 0
 	fi
 	return 1
+}
+
+function server_start()
+{
+        if is_server $1
+        then
+                tmux_exec $1 "$(server_command $1)"
+                return 0
+        fi
+        return 1
+}
+
+function server_restart()
+{
+        if is_server $1
+        then
+		tmux_exec $1 "help_say Server restarting"
+		sleep 1
+                server_quit $1
+		sleep 1
+		server_start $1
+                return 0
+        fi
+        return 1
 }
 
 function foreach_server()
@@ -166,7 +198,28 @@ case $1 in
 		command=server_command
 	;;
 	exec)
-		command=tmux_exec
+		servers="";
+		adding_servers=true
+		cmd=""
+		for arg in ${@:2}
+		do
+			if is_server $arg && $adding_servers
+			then
+				servers="$servers $arg"
+			else
+				adding_servers=false
+				cmd="$cmd $arg"
+			fi
+		done
+		if [ -z "$servers" ]
+		then
+			servers=${SERVERS[@]}
+		fi
+		for server in $servers
+       		do
+			tmux_exec $server "$cmd"
+	        done
+		exit 0
 	;;
 	irc)
 		command=tmux_irc
@@ -181,6 +234,15 @@ case $1 in
 		register_server ${@:2}
 		dump_config >$CONFIG_FILE
 		exit 0
+	;;
+	quit)
+		command=server_quit
+	;;
+	start)
+		command=server_start
+	;;
+	restart)
+		command=server_restart
 	;;
 	*)
 		foreach_server ls_server 
