@@ -1,11 +1,15 @@
 #!/bin/bash
 
 GEN_MAPINFO_GAMETYPES="dm tdm ft kh"
+GEN_MAPINFO_OUT_DIR=""
 
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
 source $SELFDIR/source-pk3-utils.sh
 
-GEN_MAPINFO_OUT_DIR=$XONOTIC_DATA_DIR/maps
+if [ -z "$GEN_MAPINFO_OUT_DIR" ]
+then
+	GEN_MAPINFO_OUT_DIR=$XONOTIC_DATA_DIR/maps
+fi
 
 
 function mapinfo()
