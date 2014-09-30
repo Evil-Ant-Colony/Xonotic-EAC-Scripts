@@ -1,0 +1,111 @@
+#!/bin/bash
+#set -x
+
+SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
+source $SELFDIR/source-pk3-utils.sh
+
+Q3MAP2=q3map2
+Q3MAP2_FLAGS=
+TMP_DIR=/tmp/minimap
+PACKAGE_DIR=$TMP_DIR/minimaps
+LOG_MISSING_IMAGES=$TMP_DIR/noimage.log
+
+# @brief Generate minimap and report missing preview
+# @param $1 pk3 file
+function generate_minimap()
+{
+	echo Checking $1...
+	
+	if ! pk3_is_map $1
+	then
+		echo 32 $1 is not a map pk3
+		return 0
+	fi
+	
+	maps=$(pk3_maps $1)
+	package=`basename $1 .pk3`
+	unzipped=false
+
+	for map in $maps
+	do
+		map=`basename $map .bsp`
+	
+		if ! pk3_contains $1 "maps/$map\.(jpg|jpeg|tga|png)" && ! pk3_contains $1 "levelshots/$2\.(jpg|jpeg|tga|png)" 
+		then
+			echo -e "\e[31m$map is missing the preview image\e[0m"
+			echo $map @ $package.pk3 >> $LOG_MISSING_IMAGES
+		fi
+		
+		if ! pk3_contains $1 "gfx/${map}_mini.tga"
+		then
+			echo $map needs minimap
+			
+			if ! $unzipped
+			then
+				echo Extracting $1...
+				if [ -e $TMP_DIR/$package ]
+				then
+					rm -rf $TMP_DIR/$package
+				fi
+				mkdir -p $TMP_DIR/$package
+				unzip -u -d $TMP_DIR/$package $1 >/dev/null
+				unzipped=true
+			fi
+			
+			echo Generating minimap for $map...
+			$Q3MAP2 $Q3MAP2_FLAGS -minimap -o $PACKAGE_DIR/gfx/${map}_mini.tga $TMP_DIR/$package/maps/$map.bsp >/dev/null
+		fi
+	
+	done
+}
+
+function show_help()
+{
+	echo "todo"
+}
+
+if [ $# -eq 0 ]
+then
+	show_help
+	exit
+fi
+
+
+mkdir -p $TMP_DIR
+mkdir -p $PACKAGE_DIR
+rm -f $LOG_MISSING_IMAGES
+rm -rf $PACKAGE_DIR/*
+
+for arg in $@
+do
+	case $arg in
+		help|--help|-h)
+			show_help
+			;;
+		*.pk3)
+			generate_minimap $arg
+			;;
+	esac
+done
+
+rmdir --ignore-fail-on-non-empty $PACKAGE_DIR
+
+if [ -d $PACKAGE_DIR ]
+then
+	echo Creating pk3...
+	package_name=$TMP_DIR/`basename $PACKAGE_DIR`.pk3
+	if [ -f $package_name ]
+	then
+		rm $package_name
+	fi
+	cwd=`pwd`
+	cd $PACKAGE_DIR 
+	echo Auto-generated minimaps >minimaps-serverpackage.txt
+	zip -p $package_name -r gfx >/dev/null
+	echo Created package $package_name
+	cd $cwd
+fi
+
+
+echo Missing previews:
+cat $LOG_MISSING_IMAGES
