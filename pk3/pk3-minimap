@@ -105,7 +105,7 @@ then
 	fi
 	cwd=`pwd`
 	cd $PACKAGE_DIR 
-	serverpackage=$PACKAGE_NAME-serverpackage.txt
+	serverpackage=$PACKAGE_NAME.serverpackage
 	echo Auto-generated minimaps >$serverpackage
 	zip -p $package_name -r gfx $serverpackage >/dev/null
 	echo Created package $package_name

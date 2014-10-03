@@ -28,7 +28,7 @@ function register_server()
 	
 	SERVERS=(${SERVERS[@]} $server_id)
 	
-	eval "SERVER_PARAMS_$server_id=\"-sessionid $server_session +serverconfig $server_config\""
+	eval "SERVER_PARAMS_$server_id=\"-game data/$server_id -sessionid $server_session +serverconfig $server_config\""
 	eval "SERVER_SESSION_$server_id=\"$server_session\""
 	eval "SERVER_CONFIG_$server_id=\"$server_config\""
 }
@@ -86,7 +86,7 @@ function tmux_exec()
 {
 	if is_server $1 
 	then
-		tmux send-keys -t $1 "$2" Enter
+		tmux send-keys -t $1 Enter "${@:2}" Enter
 		return 0
 	fi
 	return 1
@@ -102,24 +102,15 @@ function tmux_server()
 	return 1
 }
 
-function tmux_irc()
-{
-	if is_server $1 
-	then
-		tmux attach -t $1-irc
-		return 0
-	fi
-	return 1
-}
-function tmux_irc()
-{
-        if is_server $1 
-        then
-                tmux attach -t $1-irc
-                return 0
-        fi
-        return 1
-}
+# function tmux_irc()
+# {
+# 	if is_server $1 
+# 	then
+# 		tmux attach -t $1-irc
+# 		return 0
+# 	fi
+# 	return 1
+# }
 
 function server_quit()
 {
@@ -133,26 +124,31 @@ function server_quit()
 
 function server_start()
 {
-        if is_server $1
-        then
-                tmux_exec $1 "$(server_command $1)"
-                return 0
-        fi
-        return 1
+	if is_server $1
+	then
+		if ! tmux has -t $1 2>/dev/null
+		then
+			tmux new -d -s $1
+		fi
+		tmux_exec $1 "$(server_command $1)"
+		
+		return 0
+	fi
+	return 1
 }
 
 function server_restart()
 {
-        if is_server $1
-        then
-		tmux_exec $1 "help_say Server restarting"
+	if is_server $1
+	then
+		tmux_exec $1 "say Server restarting"
 		sleep 1
-                server_quit $1
+		server_quit $1
 		sleep 1
 		server_start $1
-                return 0
-        fi
-        return 1
+		return 0
+	fi
+	return 1
 }
 
 function foreach_server()
@@ -183,71 +179,253 @@ then
 else
 	dump_config >$CONFIG_FILE
 fi
+# 
+# function cmd_inline()
+# {
+# 	echo ${SERVERS[@]}
+# }
+# function cmd_inline_help()
+# {
+# 	echo "Print the name of each server in a single line"
+# }
+# function cmd_inline_synopsis()
+# {
+# 	echo
+# }
 
-command=ls_server
+function cmd_ls()
+{
+	cmd_list
+}
+function cmd_ls_help()
+{
+	echo "Shorthand for list"
+}
+function cmd_ls_synopsis()
+{
+	echo
+}
 
-case $1 in
-	inline)
-		echo ${SERVERS[@]}
-		exit 0;
-	;;
-	ls|list)
-		command=ls_server
-	;;
-	cmd)
-		command=server_command
-	;;
-	exec)
-		servers="";
-		adding_servers=true
-		cmd=""
-		for arg in ${@:2}
-		do
-			if is_server $arg && $adding_servers
-			then
-				servers="$servers $arg"
-			else
-				adding_servers=false
-				cmd="$cmd $arg"
-			fi
-		done
-		if [ -z "$servers" ]
+function cmd_list()
+{
+	command=ls_server
+	run=true
+}
+function cmd_list_help()
+{
+	echo "Print the name of each server, one per line"
+}
+function cmd_list_synopsis()
+{
+	echo
+}
+
+
+function cmd_cmd()
+{
+	command=server_command
+	run=true
+}
+function cmd_cmd_help()
+{
+	echo "Show server start command line"
+}
+function cmd_cmd_synopsis()
+{
+	echo "[\e[4mserver\e[0m]"
+}
+
+function cmd_exec()
+{
+	servers="";
+	adding_servers=true
+	cmd=""
+	for arg in ${@}
+	do
+		if is_server $arg && $adding_servers
 		then
-			servers=${SERVERS[@]}
+			servers="$servers $arg"
+		else
+			adding_servers=false
+			cmd="$cmd $arg"
 		fi
-		for server in $servers
-       		do
-			tmux_exec $server "$cmd"
-	        done
-		exit 0
-	;;
-	irc)
-		command=tmux_irc
-	;;
-	view)
-		command=tmux_server
-	;;
-	dump)
-		command=dump_server
-	;;
-	register)
-		register_server ${@:2}
-		dump_config >$CONFIG_FILE
-		exit 0
-	;;
-	quit)
-		command=server_quit
-	;;
-	start)
-		command=server_start
-	;;
-	restart)
-		command=server_restart
-	;;
-	*)
-		foreach_server ls_server 
-		exit 0
-	;;
-esac
+	done
+	if [ -z "$servers" ]
+	then
+		servers=${SERVERS[@]}
+	fi
+	for server in $servers
+	do
+		tmux_exec $server "$cmd"
+	done
+}
+function cmd_exec_help()
+{
+	echo "Execute commands on multiple servers"
+}
+function cmd_exec_synopsis()
+{
+	echo "[\e[4mserver...\e[0m] [\e[4mcommand...\e[0m]"
+}
 
-foreach_server $command "${@:2}"
+function cmd_view()
+{
+	command=tmux_server
+	run=true
+}
+function cmd_view_help()
+{
+	echo "Attach to server tmux session"
+}
+function cmd_view_synopsis()
+{
+	echo "\e[4mserver\e[0m"
+}
+
+
+function cmd_dump()
+{
+	command=dump_server
+	run=true
+}
+function cmd_dump_help()
+{
+	echo "Show all variables for a server (?) todo"
+}
+function cmd_dump_synopsis()
+{
+	echo "[\e[4mserver\e[0m]"
+}
+
+function cmd_register()
+{
+	register_server ${@:2}
+	dump_config >$CONFIG_FILE
+}
+function cmd_register_help()
+{
+	echo "Register a new server"
+}
+function cmd_register_synopsis()
+{
+	echo "\e[4mserver-id\e[0m [\e[4mserver-session-id\e[0m [\e[4mconfig-file\e[0m]]"
+}
+
+function cmd_quit()
+{
+	command=server_quit
+	run=true
+}
+function cmd_quit_help()
+{
+	echo "Quit a server"
+}
+function cmd_quit_synopsis()
+{
+	echo "[\e[4mserver\e[0m]"
+}
+
+function cmd_start()
+{
+	command=server_start
+	run=true
+}
+function cmd_start_help()
+{
+	echo "Start a server"
+}
+function cmd_start_synopsis()
+{
+	echo "[\e[4mserver\e[0m]"
+}
+
+function cmd_restart()
+{
+	command=server_restart
+	run=true
+}
+function cmd_restart_help()
+{
+	echo "Restart a server"
+}
+function cmd_restart_synopsis()
+{
+	echo "[\e[4mserver\e[0m]"
+}
+
+function cmd_help()
+{
+	
+	echo -e "\e[1mNAME\e[0m"
+	echo -e "\t$0 - Manage Xonotic servers"
+	echo
+	echo -e "\e[1mSYNOPSIS\e[0m"
+	echo -e "\t\e[1m$0\e[0m \e[4mcommand\e[0m \e[4margument...\e[0m"
+	echo
+	echo -e "\e[1mCOMMANDS\e[0m"
+	for cmd_name in ${commands[*]}
+	do
+	echo -e "\t\e[1m$cmd_name\e[0m `cmd_${cmd_name}_synopsis`" 
+	echo -e "\t\t`cmd_${cmd_name}_help`"
+	done
+}
+function cmd_help_help()
+{
+	echo "Show this help"
+}
+function cmd_help_synopsis()
+{
+	echo 
+}
+
+# function cmd_commands()
+# {
+# 	echo ${commands[*]}
+# }
+# function cmd_commands_help()
+# {
+# 	echo "Show available commands"
+# }
+# function cmd_commands_synopsis()
+# {
+# 	echo 
+# }
+
+function cmd_autocomplete()
+{
+	for cmd_name in ${commands[*]}
+	do
+		if [ "$1" = "$cmd_name" ]
+		then
+			echo ${SERVERS[@]}
+			return 0
+		fi
+	done
+	
+	echo ${commands[*]}
+}
+function cmd_autocomplete_help()
+{
+	echo "Show autocompletion suggestions"
+}
+function cmd_autocomplete_synopsis()
+{
+	echo
+}
+
+commands=(help autocomplete ls list cmd exec view dump register quit start restart)
+command=ls_server
+run=false
+
+for cmd_name in ${commands[*]}
+do
+	if [ "$1" = "$cmd_name" ] 
+	then
+		cmd_$1 ${@:2}
+	fi
+done
+
+if $run
+then
+	foreach_server $command "${@:2}"
+fi
