@@ -7,7 +7,8 @@ source $SELFDIR/source-pk3-utils.sh
 Q3MAP2=q3map2
 Q3MAP2_FLAGS=
 TMP_DIR=/tmp/minimap
-PACKAGE_DIR=$TMP_DIR/minimaps
+PACKAGE_NAME=minimaps
+PACKAGE_DIR=$TMP_DIR/$PACKAGE_NAME
 LOG_MISSING_IMAGES=$TMP_DIR/noimage.log
 
 # @brief Generate minimap and report missing preview
@@ -82,6 +83,10 @@ do
 		help|--help|-h)
 			show_help
 			;;
+		-name=*)
+			PACKAGE_NAME=`echo $arg | sed 's/.*=//'`
+			PACKAGE_DIR=$TMP_DIR/$PACKAGE_NAME
+			;;
 		*.pk3)
 			generate_minimap $arg
 			;;
@@ -93,15 +98,16 @@ rmdir --ignore-fail-on-non-empty $PACKAGE_DIR
 if [ -d $PACKAGE_DIR ]
 then
 	echo Creating pk3...
-	package_name=$TMP_DIR/`basename $PACKAGE_DIR`.pk3
+	package_name=$TMP_DIR/$PACKAGE_NAME.pk3
 	if [ -f $package_name ]
 	then
 		rm $package_name
 	fi
 	cwd=`pwd`
 	cd $PACKAGE_DIR 
-	echo Auto-generated minimaps >minimaps-serverpackage.txt
-	zip -p $package_name -r gfx >/dev/null
+	serverpackage=$PACKAGE_NAME-serverpackage.txt
+	echo Auto-generated minimaps >$serverpackage
+	zip -p $package_name -r gfx $serverpackage >/dev/null
 	echo Created package $package_name
 	cd $cwd
 fi
