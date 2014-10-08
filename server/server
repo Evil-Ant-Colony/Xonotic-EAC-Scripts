@@ -1,11 +1,15 @@
 #!/bin/bash
 
+# Configuration variables
+
 SERVERS=()
 GAME_CMD="/opt/xonotic/all run dedicated"
 GAME_PARAMS="-userdir ~/.xonotic -game data/pk3 -game data"
 WRITABLE_VARS=(GAME_CMD GAME_PARAMS)
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
 CONFIG_FILE="$SELFDIR/server.conf"
+
+# Server functions
 
 function register_server() 
 {
@@ -102,16 +106,6 @@ function tmux_server()
 	return 1
 }
 
-# function tmux_irc()
-# {
-# 	if is_server $1 
-# 	then
-# 		tmux attach -t $1-irc
-# 		return 0
-# 	fi
-# 	return 1
-# }
-
 function server_quit()
 {
 	if is_server $1 
@@ -173,12 +167,57 @@ function dump_config()
 	foreach_server dump_server
 }
 
-if [ -f $CONFIG_FILE ]
-then
-	source $CONFIG_FILE
-else
-	dump_config >$CONFIG_FILE
-fi
+
+# Split function params interpreted as [server...] [commands...]
+# get_params server1 server2 foo bar
+#	servers = "server1 server2", cmd = "foo bar"
+# get_params foo bar
+#	servers = "all servers", cmd = "foo bar"
+# get_params server1 -- server2 foo bar
+#	servers = "server1", cmd = "server2 foo bar"
+function get_params()
+{
+	servers="";
+	adding_servers=true
+	cmd=""
+	# Get server... params...
+	for arg in ${@}
+	do
+		if is_server $arg && $adding_servers
+		then
+			servers="$servers $arg"
+		elif $adding_servers && [ "$arg" = "--" ]
+		then
+			adding_servers=false
+		else
+			adding_servers=false
+			cmd="$cmd $arg"
+		fi
+	done
+	# No server => all servers
+	if [ -z "$servers" ]
+	then
+		servers=${SERVERS[@]}
+	fi
+}
+
+# Command funtions
+# 
+# function cmd_*()
+# {
+# 	some code
+# 	to simply apply a command to one or more servers:
+# 	command=something; run=true;
+# }
+# function cmd_*_help()
+# {
+# 	echo "Some help about the command"
+# }
+# function cmd_*_synopsis()
+# {
+# 	echo "Command synopisi for help"
+# }
+#
 
 function cmd_list()
 {
@@ -211,23 +250,8 @@ function cmd_cmd_synopsis()
 
 function cmd_exec()
 {
-	servers="";
-	adding_servers=true
-	cmd=""
-	for arg in ${@}
-	do
-		if is_server $arg && $adding_servers
-		then
-			servers="$servers $arg"
-		else
-			adding_servers=false
-			cmd="$cmd $arg"
-		fi
-	done
-	if [ -z "$servers" ]
-	then
-		servers=${SERVERS[@]}
-	fi
+	get_params ${@}
+	
 	for server in $servers
 	do
 		tmux_exec $server "$cmd"
@@ -376,25 +400,7 @@ function cmd_autocomplete_synopsis()
 
 function cmd_config()
 {
-	servers="";
-	adding_servers=true
-	cmd=""
-	# Get server... params...
-	for arg in ${@}
-	do
-		if is_server $arg && $adding_servers
-		then
-			servers="$servers $arg"
-		else
-			adding_servers=false
-			cmd="$cmd $arg"
-		fi
-	done
-	# No server => all servers
-	if [ -z "$servers" ]
-	then
-		servers=${SERVERS[@]}
-	fi
+	get_params ${@}
 	
 	for server in $servers
 	do
@@ -436,26 +442,7 @@ function cmd_config_synopsis()
 
 function cmd_rcon()
 {
-	# TODO: move this part in some function since it has been used several times
-	servers="";
-	adding_servers=true
-	cmd=""
-	# Get server... params...
-	for arg in ${@}
-	do
-		if is_server $arg && $adding_servers
-		then
-			servers="$servers $arg"
-		else
-			adding_servers=false
-			cmd="$cmd $arg"
-		fi
-	done
-	# No server => all servers
-	if [ -z "$servers" ]
-	then
-		servers=${SERVERS[@]}
-	fi
+	get_params ${@}
 	
 	for server in $servers
 	do
@@ -476,8 +463,6 @@ function cmd_rcon_synopsis()
 	echo "[\e[4mserver\e[0m...] [\e[4mcommand\e[0m...]"
 }
 
-
-
 function cmd_ls()
 {
 	server=$1
@@ -495,10 +480,10 @@ function cmd_ls()
 	do
 		if [ -d "$userdir/$data" ]
 		then
-			find "$userdir/$data" -wholename "*$search" 2>/dev/null | sed -r "s~^$userdir/$data/~~"
+			find "$userdir/$data" -path "$userdir/$data/$search" 2>/dev/null | sed -r "s~^$userdir/$data/~~"
 			for pk3 in $(ls $userdir/$data/*.pk3 2>/dev/null)
 			do
-				zipinfo -1 $pk3 | grep -E -e "$search_re"
+				zipinfo -1 $pk3 | grep -E -e "^$search_re$"
 			done
 		fi
 	done
@@ -512,6 +497,18 @@ function cmd_ls_synopsis()
 {
 	echo "\e[4mserver\e[0m \e[4mpattern\e[0m"
 }
+
+# Script code
+
+
+#load config file to override variables
+
+if [ -f $CONFIG_FILE ]
+then
+	source $CONFIG_FILE
+else
+	dump_config >$CONFIG_FILE
+fi
 
 commands=(help autocomplete ls list cmd exec view dump register quit start restart config rcon)
 command=ls_server
