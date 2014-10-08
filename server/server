@@ -413,7 +413,68 @@ function cmd_autocomplete_synopsis()
 	echo
 }
 
-commands=(help autocomplete ls list cmd exec view dump register quit start restart)
+function cmd_config()
+{
+	servers="";
+	adding_servers=true
+	cmd=""
+	# Get server... params...
+	for arg in ${@}
+	do
+		if is_server $arg && $adding_servers
+		then
+			servers="$servers $arg"
+		else
+			adding_servers=false
+			cmd="$cmd $arg"
+		fi
+	done
+	# No server => all servers
+	if [ -z "$servers" ]
+	then
+		servers=${SERVERS[@]}
+	fi
+	
+	for server in $servers
+	do
+		# Get userdir
+		userdir=$(server_command $server | grep -Eo "\-userdir\s+\S+" | sed -r "s/-userdir\s+//")
+		# No userdir => use default
+		[ -z "$userdir" ] && userdir="~/.xonotic"
+		# Make sure ~ is expanded
+		eval userdir=$userdir
+		# Get all the search directories for cfg files
+		params=""
+		for data in $(server_command $server | grep -Eo "\-game\s+\S+" | sed -r "s/-game\s+//")
+		do
+			params="$params --data=$userdir/$data"
+		done
+		# Call the python script which does the job
+		$SELFDIR/parse-cfg $params $(server_var CONFIG $server) $cmd
+	done
+}
+function cmd_config_help()
+{
+	echo "View server config."
+	echo "\t\tUndefined cvars and alias will result to have the value \"\" "
+	echo "\t\twhich may differ from the actual value."
+	echo "\t\tOption description:"
+	echo "\t\t\e[1m--cvar\e[0m"
+	echo "\t\t\tList all the defined cvars"
+	echo "\t\t\e[1m--alias\e[0m"
+	echo "\t\t\tList all the defined aliases"
+	echo "\t\t\e[1m--cvar=\e[22;4mcvar-name\e[0m"
+	echo "\t\t\tShow the value of the given cvar"
+	echo "\t\t\e[1m--alias=\e[22;4malias-name\e[0m"
+	echo "\t\t\tShow the value of the given alias"
+}
+function cmd_config_synopsis()
+{
+	echo "[\e[4mserver\e[0m...] [\e[1m--cvar\e[0m[\e[1m=\e[22;4mcvar-name\e[0m]|\e[1m--alias\e[0m[\e[1m=\e[22;4malias-name\e[0m]]..."
+}
+
+
+commands=(help autocomplete ls list cmd exec view dump register quit start restart config)
 command=ls_server
 run=false
 

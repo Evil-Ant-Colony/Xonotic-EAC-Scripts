@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+import sys, re, os
+
+class Config:
+	
+	re_comment = re.compile('\s*//.*')
+	re_command = re.compile('\s*(\S+)\s+((?:"(?:[^"]|\\")*")|(?:[^"][^;\n]*))')
+	
+	def __init__(self):
+		self.cvar = {}
+		self.alias= {}
+		self.path =[]
+	
+	def parse_cvar(self,line):
+		result = self.re_command.match(line)
+		if result:
+			self.cvar[result.group(1)] = result.group(2)
+			
+	def parse_alias(self,line):
+		result = self.re_command.match(line)
+		if result:
+			self.alias[result.group(1)] = result.group(2)
+	
+	def parse_line(self,line):
+		result = self.re_comment.match(line)
+		if not result:
+			result = self.re_command.match(line)
+			if result:
+				if result.group(1) == "set":
+					self.parse_cvar(result.group(2))
+				elif result.group(1) == "alias":
+					self.parse_alias(result.group(2))
+				elif result.group(1) == "exec":
+					self.parse_file(result.group(2))
+				elif result.group(1) not in self.alias: #todo expand aliases?
+					self.cvar[result.group(1)] = result.group(2)
+					
+				
+	def get_file(self,filename):
+		if os.path.isfile(filename):
+			return filename
+		for dir in self.path:
+			if os.path.isfile(os.path.join(dir,filename)):
+				return os.path.join(dir,filename)
+		return ""
+		
+	def parse_file(self,filename):
+		filepath = self.get_file(filename)
+		if filepath == "":
+			return
+		cfgfile = open(filepath)
+		for line in cfgfile:
+			self.parse_line(line)
+
+
+config = Config()
+re_cmd = re.compile('--?([-a-zA-Z_0-9]+)(?:=(\S+))?')
+for arg in sys.argv[1:]:
+	if arg.endswith(".cfg"):
+		if len(config.path) == 0:
+			config.path.append(os.path.dirname(arg))
+		config.parse_file(arg)
+	else:
+		match = re_cmd.match(arg)
+		if match:
+			option = match.group(1)
+			value = match.group(2)
+			if value:
+				if option == "data":
+					config.path.append(value)
+				elif option == "cvar":
+					print(value,config.cvar.get(value,'""'))
+				elif option == "alias":
+					print(value,config.alias.get(value,'""'))
+			else:
+				if option == "cvar":
+					for name, value in config.cvar.items():
+						print(name, value)
+				elif option == "alias":
+					for name, value in config.alias.items():
+						print(name, value)
+				
+
