@@ -179,32 +179,6 @@ then
 else
 	dump_config >$CONFIG_FILE
 fi
-# 
-# function cmd_inline()
-# {
-# 	echo ${SERVERS[@]}
-# }
-# function cmd_inline_help()
-# {
-# 	echo "Print the name of each server in a single line"
-# }
-# function cmd_inline_synopsis()
-# {
-# 	echo
-# }
-
-function cmd_ls()
-{
-	cmd_list
-}
-function cmd_ls_help()
-{
-	echo "Shorthand for list"
-}
-function cmd_ls_synopsis()
-{
-	echo
-}
 
 function cmd_list()
 {
@@ -360,13 +334,13 @@ function cmd_help()
 	echo -e "\t$0 - Manage Xonotic servers"
 	echo
 	echo -e "\e[1mSYNOPSIS\e[0m"
-	echo -e "\t\e[1m$0\e[0m \e[4mcommand\e[0m \e[4margument...\e[0m"
+	echo -e "\t\e[1m$0\e[0m \e[4mcommand\e[0m \e[4margument\e[0m..."
 	echo
 	echo -e "\e[1mCOMMANDS\e[0m"
 	for cmd_name in ${commands[*]}
 	do
-	echo -e "\t\e[1m$cmd_name\e[0m `cmd_${cmd_name}_synopsis`" 
-	echo -e "\t\t`cmd_${cmd_name}_help`"
+		echo -e "\t\e[1m$cmd_name\e[0m `cmd_${cmd_name}_synopsis`" 
+		echo -e "\t\t`cmd_${cmd_name}_help`"
 	done
 }
 function cmd_help_help()
@@ -377,19 +351,6 @@ function cmd_help_synopsis()
 {
 	echo 
 }
-
-# function cmd_commands()
-# {
-# 	echo ${commands[*]}
-# }
-# function cmd_commands_help()
-# {
-# 	echo "Show available commands"
-# }
-# function cmd_commands_synopsis()
-# {
-# 	echo 
-# }
 
 function cmd_autocomplete()
 {
@@ -475,6 +436,7 @@ function cmd_config_synopsis()
 
 function cmd_rcon()
 {
+	# TODO: move this part in some function since it has been used several times
 	servers="";
 	adding_servers=true
 	cmd=""
@@ -514,6 +476,42 @@ function cmd_rcon_synopsis()
 	echo "[\e[4mserver\e[0m...] [\e[4mcommand\e[0m...]"
 }
 
+
+
+function cmd_ls()
+{
+	server=$1
+	search=${@:2}
+	search_re=$(echo "$search" | sed -r -e 's/([.(){}[\]+?$^\\])/\\\1/g' -e 's/\*/.*/g')
+	
+	# Get userdir
+	userdir=$(server_command $server | grep -Eo "\-userdir\s+\S+" | sed -r "s/-userdir\s+//")
+	# No userdir => use default
+	[ -z "$userdir" ] && userdir="~/.xonotic"
+	# Make sure ~ is expanded
+	eval userdir=$userdir
+	# Get all the search directories
+	for data in $(server_command $server | grep -Eo "\-game\s+\S+" | sed -r "s/-game\s+//")
+	do
+		if [ -d "$userdir/$data" ]
+		then
+			find "$userdir/$data" -wholename "*$search" 2>/dev/null | sed -r "s~^$userdir/$data/~~"
+			for pk3 in $(ls $userdir/$data/*.pk3 2>/dev/null)
+			do
+				zipinfo -1 $pk3 | grep -E -e "$search_re"
+			done
+		fi
+	done
+	
+}
+function cmd_ls_help()
+{
+	echo "List files matching \e[4mpattern\e[0m for the given server"
+}
+function cmd_ls_synopsis()
+{
+	echo "\e[4mserver\e[0m \e[4mpattern\e[0m"
+}
 
 commands=(help autocomplete ls list cmd exec view dump register quit start restart config rcon)
 command=ls_server
