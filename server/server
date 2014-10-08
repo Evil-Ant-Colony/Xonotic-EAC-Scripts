@@ -228,11 +228,6 @@ function cmd_list_help()
 {
 	echo "Print the name of each server, one per line"
 }
-function cmd_list_synopsis()
-{
-	echo
-}
-
 
 function cmd_cmd()
 {
@@ -363,17 +358,24 @@ function cmd_help()
 	echo -e "\e[1mCOMMANDS\e[0m"
 	for cmd_name in ${commands[*]}
 	do
-		echo -e "\t\e[1m$cmd_name\e[0m `cmd_${cmd_name}_synopsis`" 
-		echo -e "\t\t`cmd_${cmd_name}_help`"
+		echo -en "\t\e[1m$cmd_name\e[0m "
+		if [ "function" = "$(type -t cmd_${cmd_name}_synopsis)" ]
+		then
+			echo -e `cmd_${cmd_name}_synopsis`
+		else
+			echo
+		fi
+		if [ "function" = "$(type -t cmd_${cmd_name}_help)" ]
+		then
+			echo -e "\t\t`cmd_${cmd_name}_help`"
+		else
+			echo "\t\t(Undocumented)"
+		fi
 	done
 }
 function cmd_help_help()
 {
 	echo "Show this help"
-}
-function cmd_help_synopsis()
-{
-	echo 
 }
 
 function cmd_autocomplete()
