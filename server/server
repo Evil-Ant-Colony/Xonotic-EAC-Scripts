@@ -265,7 +265,7 @@ function cmd_exec_help()
 }
 function cmd_exec_synopsis()
 {
-	echo "[\e[4mserver...\e[0m] [\e[4mcommand...\e[0m]"
+	echo "[\e[4mserver\e[0m...] [\e[4mcommand\e[0m...]"
 }
 
 function cmd_view()
@@ -473,8 +473,49 @@ function cmd_config_synopsis()
 	echo "[\e[4mserver\e[0m...] [\e[1m--cvar\e[0m[\e[1m=\e[22;4mcvar-name\e[0m]|\e[1m--alias\e[0m[\e[1m=\e[22;4malias-name\e[0m]]..."
 }
 
+function cmd_rcon()
+{
+	servers="";
+	adding_servers=true
+	cmd=""
+	# Get server... params...
+	for arg in ${@}
+	do
+		if is_server $arg && $adding_servers
+		then
+			servers="$servers $arg"
+		else
+			adding_servers=false
+			cmd="$cmd $arg"
+		fi
+	done
+	# No server => all servers
+	if [ -z "$servers" ]
+	then
+		servers=${SERVERS[@]}
+	fi
+	
+	for server in $servers
+	do
+		config=$(cmd_config $server --cvar=rcon_password --cvar=rcon_secure --cvar=port)
+		rcon_password=$(echo $config | grep -Eo 'rcon_password \"?[^" ]+\"?' | sed -r 's/rcon_password "?([^"]+)"?/\1/')
+		rcon_secure=$(echo $config | grep -Eo 'rcon_secure \"?[^" ]+\"?'| sed 's/rcon_secure //')
+		port=$(echo $config | grep -Eo 'port \"?[^" ]+\"?' | sed 's/port //')
+		$SELFDIR/rcon "-pw=$rcon_password" "-p$port" "-s=$rcon_secure" -c "$cmd"
+	done
+}
+function cmd_rcon_help()
+{
+	echo "Execute commands on multiple servers."
+	echo "\t\tUnlike \e[1mexec\e[0m this will print the result"
+}
+function cmd_rcon_synopsis()
+{
+	echo "[\e[4mserver\e[0m...] [\e[4mcommand\e[0m...]"
+}
 
-commands=(help autocomplete ls list cmd exec view dump register quit start restart config)
+
+commands=(help autocomplete ls list cmd exec view dump register quit start restart config rcon)
 command=ls_server
 run=false
 
