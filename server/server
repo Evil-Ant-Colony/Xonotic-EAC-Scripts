@@ -6,68 +6,90 @@ SERVERS=()
 GAME_CMD="xonotic"
 GAME_PARAMS="-userdir ~/.xonotic -game data/pk3 -game data"
 WRITABLE_VARS=(GAME_CMD GAME_PARAMS TEXT_EDITOR)
+WRITABLE_SERVER_VARS=(sessionid serverconfig gamedir args)
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
 CONFIG_FILE="$SELFDIR/server.conf"
 TEXT_EDITOR=sensible-editor
 
-GAME_CMD_help="Command used to start the servers"
-GAME_PARAMS_help="Base command line options to pass to the game engine when starting a server"
-TEXT_EDITOR_help="The command used to edit text files (eg: mapinfo)"
+declare -A WRITABLE_VARS_help
+WRITABLE_VARS_help[GAME_CMD]="Command used to start the servers"
+WRITABLE_VARS_help[GAME_PARAMS]="Base command line options to pass to the game engine when starting a server"
+WRITABLE_VARS_help[TEXT_EDITOR]="The command used to edit text files (eg: mapinfo)"
+declare -A WRITABLE_SERVER_VARS_help
+WRITABLE_SERVER_VARS_help[sessionid]="Session id, defaults to \e[4mserver_id\e[0m"
+WRITABLE_SERVER_VARS_help[serverconfig]="Server config file, defaults to is \"cfg/server-\e[4mserver_id\e[0m.cfg\"."
+WRITABLE_SERVER_VARS_help[gamedir]="Server game data directory, defaults to \"data/\e[4mserver_id\e[0m\"."
+WRITABLE_SERVER_VARS_help[args]="Additional command line arguments used when starting the server, default empty."
 
 # Server functions
 
 # @brief Register a server 
-# @params server_id sessionid serverconfig
-function register_server() 
+# @params server_id [option value]...
+function register_server()
 {
-	if [ -z "$1" ] || is_server "$1"
+	# Filter out invalid characters from id
+	local server_id=$( echo "$1" | sed "s/[^a-z0-9_]//g" )
+	
+	# Terminate if the server is already registered or we don't have a valid id
+	if [ -z "$server_id" ] || is_server "$server_id"
 	then
 		return 1
 	fi
 	
-	local server_id="$1" server_session="$2" server_config="$3"
+	# Set default values
+	declare -A tmp_serverarray
+	tmp_serverarray[sessionid]="$server_id"
+	tmp_serverarray[serverconfig]="cfg/server-$server_id.cfg"
+	tmp_serverarray[gamedir]="data/$server_id"
 	
-	if [ -z "$server_session" ]
-	then
-		server_session=$server_id
-	fi
+	# parse settings
+	shift
+	while [ -n "$1" ]
+	do
+		tmp_serverarray["$1"]="$2"
+		shift 2
+	done
 	
-	if [ -z "$server_config" ]
-	then
-		server_config="cfg/server-$server_id.cfg"
-	fi
-	
+	#save server
 	SERVERS=(${SERVERS[@]} $server_id)
-	
-	local server_maindir="data/$server_id"
 	
 	# Get userdir
 	local userdir=$(echo "$GAME_CMD $GAME_PARAMS" | grep -Eo "\-userdir\s+\S+" | sed -r "s/-userdir\s+//")
 	# No userdir => use default
 	[ -z "$userdir" ] && userdir="~/.xonotic"
+	# Ensure userdir is expanded
+	eval "userdir=$userdir"
+	# main_dir is a full path (ie: not relative to userdir)
+	tmp_serverarray[main_dir]="$userdir/${tmp_serverarray[gamedir]}"
+	# All command line arguments specific to this server
+	tmp_serverarray[full_args]="-game ${tmp_serverarray[gamedir]} -sessionid ${tmp_serverarray[sessionid]} +serverconfig ${tmp_serverarray[serverconfig]} ${tmp_serverarray[args]}"
 	
-	eval "SERVER_MAIN_DIR_$server_id=\"$userdir/$server_maindir\""
-	eval "SERVER_PARAMS_$server_id=\"-game $server_maindir -sessionid $server_session +serverconfig $server_config\""
-	eval "SERVER_SESSION_$server_id=\"$server_session\""
-	eval "SERVER_CONFIG_$server_id=\"$server_config\""
+	# Copy to a global array
+	local server_array="SERVER_$server_id"
+	declare -Ag $server_array
+	for key in "${!tmp_serverarray[@]}"
+	do
+		eval "$server_array[$key]=\"${tmp_serverarray[$key]}\""
+	done
 }
 
 # @brief Get server variable
+# @param $1 server id
 # @param $1 variable name
-# @param $2 server id
 #
-# Possible variables:
-#	* MAIN_DIR      main data directory for the server
-#	* PARAMS        command line arguments used for this particular server
-#	* SESSION       session id
-#	* CONFIG        server config file
+# Variables that are always defined:
+#	* main_dir      main data directory for the server
+#	* gamedir       main_dir relative to -userdir
+#	* full_args     command line arguments used for this particular server
+#	* sessionid     session id
+#	* serverconfig  server config file
 #
 function server_var()
 {
-	if is_server $2
+	if is_server $1
 	then
-		local opt=SERVER_$1_$2
-		echo ${!opt}
+		local server_array="SERVER_$1"
+		eval "echo \"\${${server_array}[$2]}\""
 		return 0;
 	fi
 	return 1
@@ -97,7 +119,7 @@ function server_command()
 {
 	if is_server $1 
 	then
-		echo $GAME_CMD $GAME_PARAMS $(server_var PARAMS $1)
+		echo $GAME_CMD $GAME_PARAMS $(server_var $1 full_args)
 		return 0
 	fi
 	return 1
@@ -209,7 +231,15 @@ function dump_server()
 {
 	if is_server $1
 	then
-		echo "register_server $1 $(server_var SESSION $1) $(server_var CONFIG $1)"
+		echo -n "register_server $1 "
+		declare -A tmp_serverarray
+		eval $(set -o posix; set | grep SERVER_$1 | sed s/SERVER_$1/tmp_serverarray/ )
+		
+		for key in ${WRITABLE_SERVER_VARS[@]}
+		do
+			echo -n "$key \"${tmp_serverarray[$key]}\" "
+		done
+		echo
 	fi
 }
 
@@ -270,7 +300,7 @@ function extract_mapinfo()
 		fi
 	done
 	
-	local maindir=$(server_var MAIN_DIR $server)
+	local maindir=$(server_var $server main_dir)
 	eval "maindir=$maindir"
 	mkdir -p "$maindir/maps"
 	local destfile="$maindir/maps/$map.mapinfo"
@@ -428,11 +458,11 @@ function cmd_register()
 }
 function cmd_register_help()
 {
-	echo "Register a new server"
+	echo "Register a new server. (See below for details)"
 }
 function cmd_register_synopsis()
 {
-	echo "\e[4mserver-id\e[0m [\e[4mserver-session-id\e[0m [\e[4mconfig-file\e[0m]]"
+	echo "\e[4mserver-id\e[0m [\e[4moption\e[0m \e[4mvalue\e[0m]..."
 }
 
 function cmd_quit()
@@ -509,24 +539,23 @@ function cmd_help()
 	echo -e "\tYou can use it to override global options (see below) and register servers."
 	echo
 	echo -e "\e[1mGlobal Options\e[0m"
-	for glob in ${WRITABLE_VARS[@]}
+	for var in ${WRITABLE_VARS[@]}
 	do
-		echo -e "\t\e[1m$glob\e[0m = \"${!glob}\""
-		local glob_help="${glob}_help"
-		if [ -n "${!glob_help}" ]
-		then
-			echo -e "\t\t${!glob_help}"
-		fi
+		echo -e "\t\e[1m$var\e[0m = \"${!var}\""
+		echo -e "\t\t${WRITABLE_VARS_help[$var]}"
 	done
 	echo
 	echo -e "\e[1mRegistering Servers\e[0m"
-	echo -e "\t\e[1mregister_server\e[0m \e[4mserver_id\e[0m [ \e[4msession_id\e[0m [\e[4mserverconfig_file\e[0m] ]"
+	echo -e "\t\e[1mregister_server\e[0m \e[4mserver_id\e[0m [\e[4moption\e[0m \e[4mvalue\e[0m]]..."
 	echo -e "\t\tRegisters a game server with the given id."
-	echo -e "\t\tIf \e[4msession_id\e[0m is missing, \e[4mserver_id\e[0m will be used as session name."
-	echo -e "\t\tThe default value for \e[4mserverconfig_file\e[0m is \"cfg/server-\e[4mserver_id\e[0m.cfg\"."
 	echo
-	
-	
+	echo -e "\e[1mServer Options\e[0m"
+	for var in ${WRITABLE_SERVER_VARS[@]}
+	do
+		echo -e "\t\e[1m$var\e[0m"
+		echo -e "\t\t${WRITABLE_SERVER_VARS_help[$var]}"
+	done
+	echo
 	
 }
 function cmd_help_help()
@@ -567,7 +596,7 @@ function cmd_config()
 			params="--data=$dir $params"
 		done
 		# Call the python script which does the job
-		echo $SELFDIR/parse-cfg $params $(server_var CONFIG $server) $cmd
+		$SELFDIR/parse-cfg $params $(server_var $server serverconfig) $cmd
 	done
 }
 function cmd_config_help()
