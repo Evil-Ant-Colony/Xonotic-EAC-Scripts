@@ -1,11 +1,15 @@
 #!/bin/bash
 
+#######################################################################
 # Configuration variables
+#######################################################################
 
 SERVERS=()
 GAME_CMD="xonotic"
 GAME_PARAMS="-userdir ~/.xonotic -game data/pk3 -game data"
-WRITABLE_VARS=(GAME_CMD GAME_PARAMS TEXT_EDITOR)
+PK3_PUBLIC_DIR=
+TEMPDIR=/tmp
+WRITABLE_VARS=(GAME_CMD GAME_PARAMS TEXT_EDITOR PK3_PUBLIC_DIR TEMPDIR)
 WRITABLE_SERVER_VARS=(sessionid serverconfig gamedir args)
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
 CONFIG_FILE="$SELFDIR/server.conf"
@@ -15,13 +19,17 @@ declare -A WRITABLE_VARS_help
 WRITABLE_VARS_help[GAME_CMD]="Command used to start the servers"
 WRITABLE_VARS_help[GAME_PARAMS]="Base command line options to pass to the game engine when starting a server"
 WRITABLE_VARS_help[TEXT_EDITOR]="The command used to edit text files (eg: mapinfo)"
+WRITABLE_VARS_help[PK3_PUBLIC_DIR]="Path the directory used to store the pk3s available for download"
+WRITABLE_VARS_help[TEMPDIR]="Path to a directory suitable to store temporary files"
 declare -A WRITABLE_SERVER_VARS_help
 WRITABLE_SERVER_VARS_help[sessionid]="Session id, defaults to \e[4mserver_id\e[0m"
 WRITABLE_SERVER_VARS_help[serverconfig]="Server config file, defaults to is \"cfg/server-\e[4mserver_id\e[0m.cfg\"."
 WRITABLE_SERVER_VARS_help[gamedir]="Server game data directory, defaults to \"data/\e[4mserver_id\e[0m\"."
 WRITABLE_SERVER_VARS_help[args]="Additional command line arguments used when starting the server, default empty."
 
+#######################################################################
 # Server functions
+#######################################################################
 
 # @brief Register a server 
 # @params server_id [option value]...
@@ -367,7 +375,33 @@ function get_params()
 	fi
 }
 
-# Command funtions
+#######################################################################
+# PK3 functions
+#######################################################################
+
+# Check if $1 is a pk3 file name
+function is_pk3()
+{
+	if [ ! -f "$1" ]
+	then
+		return 1 # not a file
+	fi
+	local ext=$(echo -n "$1" | tail -c 4)
+	if [ "$ext" != ".pk3" ]
+	then
+		return 2 # wrong extension
+	fi
+	if ! zipinfo "$1" 1>/dev/null 2>&1
+	then
+		return 3 # not a zip archive
+	fi
+	
+	return 0 # passed all test
+}
+
+#######################################################################
+# Command functions
+#######################################################################
 # 
 # function cmd_*()
 # {
@@ -771,9 +805,60 @@ function cmd_mapinfo_synopsis()
 	echo "\e[4mserver\e[0m \e[4mmap\e[0m"
 }
 
+function cmd_install()
+{
+	get_params ${@}
 
+	local filename="$cmd"
+	local istemp=false
+	
+	if [ -f "$filename" ]
+	then
+		echo "Installing local file"
+	else
+		local local=$TEMPDIR/$(basename "$filename")
+		if ! wget -O "$local" "$filename"
+		then
+			echo "Could not download $filename"
+			return 1
+		fi
+		filename="$local"
+	fi
+	
+	if ! is_pk3 "$filename"
+	then
+		echo "Not a PK3 file: $filename"
+		$istemp && rm "$filename"
+		return 2
+	fi
+	
+	if [ -d "$PK3_PUBLIC_DIR" ]
+	then
+		cp -n "$filename" "$PK3_PUBLIC_DIR"
+	fi
+	
+	for server in $servers
+	do
+		local serverdir=$(server_var $server main_dir)
+		mkdir -p "$serverdir"
+		cp -n "$filename" "$serverdir"
+		tmux_exec $server fs_rescan
+	done
+	
+	$istemp && rm "$filename"
+}
+function cmd_install_help()
+{
+	echo "Install a local or a remote pk3."
+}
+function cmd_install_synopsis()
+{
+	echo "[\e[4mserver\e[0m...] \e[4mfile\e[0m|\e[4murl\e[0m"
+}
+
+#######################################################################
 # Script code
-
+#######################################################################
 
 #load config file to override variables
 
@@ -784,7 +869,8 @@ else
 	dump_config >$CONFIG_FILE
 fi
 
-commands=(help autocomplete ls list cmd exec view dumpconfig register quit start restart config rcon maps mapinfo)
+commands=(help autocomplete ls list cmd exec view dumpconfig register quit start \
+	restart config rcon maps mapinfo install)
 command=ls_server
 run=false
 
