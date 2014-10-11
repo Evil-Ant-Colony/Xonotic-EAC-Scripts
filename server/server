@@ -809,8 +809,10 @@ function cmd_install()
 {
 	get_params ${@}
 
-	local filename="$cmd"
+	local filename=$(echo "$cmd" | sed -r "s/^ //")
 	local istemp=false
+	
+	
 	
 	if [ -f "$filename" ]
 	then
