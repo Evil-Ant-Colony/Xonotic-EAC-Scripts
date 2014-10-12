@@ -14,6 +14,7 @@ WRITABLE_SERVER_VARS=(sessionid serverconfig gamedir args)
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
 CONFIG_FILE="$SELFDIR/server.conf"
 TEXT_EDITOR=sensible-editor
+PLUGINDIR=$SELFDIR/plugins
 
 declare -A WRITABLE_VARS_help
 WRITABLE_VARS_help[GAME_CMD]="Command used to start the servers"
@@ -400,6 +401,23 @@ function is_pk3()
 }
 
 #######################################################################
+# Plugin functions
+#######################################################################
+
+# invoke $1 with the provided parameters
+function plugin()
+{
+	filename="$PLUGINDIR/$1";
+	if [ -f "$filename" -a -x "$filename" ]
+	then
+		# TODO: export some useful variables to the environment?
+		"$filename" ${@:2}
+	else
+		echo "Invocation to an invalid plugin: $1"
+	fi
+}
+
+#######################################################################
 # Command functions
 #######################################################################
 # 
@@ -568,6 +586,13 @@ function cmd_help()
 		fi
 	done
 	echo
+	echo -e "\e[1mPLUGIN COMMANDS\e[0m"
+	for plugin_name in ${plugins[*]}
+	do
+		echo -e "\t\e[1m$plugin_name\e[0m $(plugin $plugin_name synopsis)"
+		echo -e "\t\t $(plugin $plugin_name help)"
+	done
+	echo
 	echo -e "\e[1mCONFIGURATION\e[0m"
 	echo -e "\tThe configuration file is \e[1m$CONFIG_FILE\e[0m."
 	echo -e "\tYou can use it to override global options (see below) and register servers."
@@ -590,6 +615,16 @@ function cmd_help()
 		echo -e "\t\t${WRITABLE_SERVER_VARS_help[$var]}"
 	done
 	echo
+	echo -e "\e[1mPLUGINS\e[0m"
+	echo -e "\tPlugins can be created in the directory"
+	echo -e "\t\e[4m$PLUGINDIR\e[0m."
+	echo -e "\tA plugin must be an executable file, the script will use their file name"
+	echo -e "\tas command name so a simple word without extension is reccommended for this."
+	echo -e "\tA plugin is required to output a synopsis (single line without newline)"
+	echo -e "\twhen invoked with the single argument \e[1msynopsis\e[0m."
+	echo -e "\tSimilarly, it should output some description when called with \e[1mhelp\e[0m."
+	echo -e "\tOn a normal execution, plugins will receive the arguments as invoked by the user."
+	echo
 	
 }
 function cmd_help_help()
@@ -608,7 +643,7 @@ function cmd_autocomplete()
 		fi
 	done
 	
-	echo ${commands[*]}
+	echo ${commands[*]} ${plugins[*]}
 }
 function cmd_autocomplete_help()
 {
@@ -873,8 +908,19 @@ fi
 
 commands=(help autocomplete ls list cmd exec view dumpconfig register quit start \
 	restart config rcon maps mapinfo install)
+plugins=()
 command=ls_server
 run=false
+
+for plugin in $(find $PLUGINDIR -type f -executable -exec basename {} \;)
+do
+	plugins+="$plugin"
+	if [ "$1" = "$plugin" ]
+	then
+		plugin "$plugin" ${@:2}
+		exit
+	fi
+done
 
 for cmd_name in ${commands[*]}
 do
