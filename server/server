@@ -232,7 +232,13 @@ function dump_config()
 	do
 		echo "$var=\"${!var}\""
 	done
+	
 	foreach_server dump_server
+	
+	for plugin in ${plugins[*]}
+	do
+		echo load_plugin $plugin
+	done
 }
 
 # Print the server registration command for $1
@@ -417,6 +423,28 @@ function plugin()
 	fi
 }
 
+# load all plugins
+function load_plugins()
+{
+	plugins=()
+	for plugin in $(find $PLUGINDIR -type f -executable -exec basename {} \;)
+	do
+		plugins+="$plugin"
+	done
+}
+
+# load a single plugin ($1)
+function load_plugin()
+{
+	if [ -f "$PLUGINDIR/$1" -a -x "$PLUGINDIR/$1" ]
+	then
+		plugins+="$1"
+	else
+		echo "Trying to load an invalid plugin: $1" 1>&2
+		return 1
+	fi
+}
+
 #######################################################################
 # Command functions
 #######################################################################
@@ -586,13 +614,16 @@ function cmd_help()
 		fi
 	done
 	echo
-	echo -e "\e[1mPLUGIN COMMANDS\e[0m"
-	for plugin_name in ${plugins[*]}
-	do
-		echo -e "\t\e[1m$plugin_name\e[0m $(plugin $plugin_name synopsis)"
-		echo -e "\t\t $(plugin $plugin_name help)"
-	done
-	echo
+	if [ "${#plugins}" -gt 0 ]
+	then
+		echo -e "\e[1mPLUGIN COMMANDS\e[0m"
+		for plugin_name in ${plugins[*]}
+		do
+			echo -e "\t\e[1m$plugin_name\e[0m $(plugin $plugin_name synopsis)"
+			echo -e "\t\t $(plugin $plugin_name help)"
+		done
+		echo
+	fi
 	echo -e "\e[1mCONFIGURATION\e[0m"
 	echo -e "\tThe configuration file is \e[1m$CONFIG_FILE\e[0m."
 	echo -e "\tYou can use it to override global options (see below) and register servers."
@@ -624,6 +655,8 @@ function cmd_help()
 	echo -e "\twhen invoked with the single argument \e[1msynopsis\e[0m."
 	echo -e "\tSimilarly, it should output some description when called with \e[1mhelp\e[0m."
 	echo -e "\tOn a normal execution, plugins will receive the arguments as invoked by the user."
+	echo -e "\tTo load all plugins call the command \e[1mload_plugins\e[0m in the config file."
+	echo -e "\tTo load a specific plugin call \e[1mload_plugin\e[0m \e[4mplugin_name\e[0m."
 	echo
 	
 }
@@ -899,29 +932,30 @@ function cmd_install_synopsis()
 
 #load config file to override variables
 
+plugins=()
 if [ -f $CONFIG_FILE ]
 then
 	source $CONFIG_FILE
 else
+	load_plugins
 	dump_config >$CONFIG_FILE
 fi
 
 commands=(help autocomplete ls list cmd exec view dumpconfig register quit start \
 	restart config rcon maps mapinfo install)
-plugins=()
+
 command=ls_server
 run=false
 
-for plugin in $(find $PLUGINDIR -type f -executable -exec basename {} \;)
+for plugin in ${plugins[*]}
 do
-	plugins+="$plugin"
 	if [ "$1" = "$plugin" ]
 	then
 		plugin "$plugin" ${@:2}
 		exit
 	fi
 done
-
+		
 for cmd_name in ${commands[*]}
 do
 	if [ "$1" = "$cmd_name" ] 
