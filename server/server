@@ -416,7 +416,21 @@ function plugin()
 	filename="$PLUGINDIR/$1";
 	if [ -f "$filename" -a -x "$filename" ]
 	then
-		# TODO: export some useful variables to the environment?
+		for var in ${WRITABLE_VARS[@]}
+		do
+			export $var
+		done
+		export SERVER_NAMES=${SERVERS[@]}
+		for server in ${SERVERS[@]}
+		do
+			declare -A tmp_serverarray
+			eval $(set -o posix; set | grep SERVER_$server | sed s/SERVER_$server/tmp_serverarray/ )
+			
+			for key in ${WRITABLE_SERVER_VARS[@]}
+			do
+				export "SERVER_${server}_$key"="${tmp_serverarray[$key]}"
+			done
+		done
 		"$filename" ${@:2}
 	else
 		echo "Invocation to an invalid plugin: $1"
@@ -657,6 +671,12 @@ function cmd_help()
 	echo -e "\tOn a normal execution, plugins will receive the arguments as invoked by the user."
 	echo -e "\tTo load all plugins call the command \e[1mload_plugins\e[0m in the config file."
 	echo -e "\tTo load a specific plugin call \e[1mload_plugin\e[0m \e[4mplugin_name\e[0m."
+	echo
+	echo -e "\e[1mEnvironment Variables\e[0m"
+	echo -e "\tPlugins have can read from the environment:"
+	echo -e "\t\t * All the writable global options (see above)"
+	echo -e "\t\t * The variable \e[1mSERVER_NAMES\e[0m, containing the server names"
+	echo -e "\t\t * All the writable server options as \e[1mSERVER_\e[22;4mserver\e[24;1m_\e[22;4moption\e[0m"
 	echo
 	
 }
