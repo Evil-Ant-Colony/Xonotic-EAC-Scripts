@@ -945,6 +945,27 @@ function cmd_install_synopsis()
 {
 	echo "[\e[4mserver\e[0m...] \e[4mfile\e[0m|\e[4murl\e[0m"
 }
+function cmd_plugins()
+{
+	
+	for maybe_plugin in $(find $PLUGINDIR -type f -executable -exec basename {} \;)
+	do
+		for plugin in ${plugins[*]}
+		do
+			if [ "$plugin" = "$maybe_plugin" ]
+			then
+				echo -en "\e[32m$plugin ";
+				continue 2
+			fi
+		done
+		echo -en "\e[31m$maybe_plugin ";
+	done
+	echo -e "\e[0m"
+}
+function cmd_plugins_help()
+{
+	echo "List available and installed plugins."
+}
 
 #######################################################################
 # Script code
@@ -962,7 +983,7 @@ else
 fi
 
 commands=(help autocomplete ls list cmd exec view dumpconfig register quit start \
-	restart config rcon maps mapinfo install)
+	restart config rcon maps mapinfo install plugins)
 
 command=ls_server
 run=false
