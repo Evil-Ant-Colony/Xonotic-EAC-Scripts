@@ -460,6 +460,93 @@ function load_plugin()
 }
 
 #######################################################################
+# Compile functions
+#######################################################################
+# Defines a mod
+# Here a "mod" is a general entity which needs to be compiled and then 
+# requires an action on the servers
+# @param $1 mod identifier
+# @param $2 (optional) mod build command
+# @param $3 (optional) server update command, 
+#	will be executed for all the requred servers
+# @param $4+ (optional) key-value pairs 
+function define_mod()
+{
+	local modname=$1
+	shift
+	declare -A tmp_modarray
+	tmp_modarray[name]=$modname
+	tmp_modarray[build_dir]=""
+	tmp_modarray[servers]=""
+	
+	if [ -n "$2" ]
+	then
+		tmp_modarray[build]="$2"
+		shift
+		if [ -n "$3" ]
+		then
+			tmp_modarray[update]="$3"
+			shift
+		fi
+	fi
+	
+	# parse settings
+	while [ -n "$1" ]
+	do
+		tmp_modarray["$1"]="$2"
+		shift 2
+	done
+	
+	# Copy to a global array
+	local mod_array="MOD_$modname"
+	declare -Ag $mod_array
+	for key in "${!tmp_modarray[@]}"
+	do
+		eval "$mod_array[$key]=\"${tmp_modarray[$key]}\""
+	done
+}
+
+# Whether $1 is a registered mod
+function is_mod()
+{
+	[ -z "$1" ] && ! ( echo -n "$1" | grep -q "[^-a-zA-Z0-9_]" ) && \
+		exec "[ $1 -eq \$MOD_$1[name] ]"
+}
+
+# Get a mod variable
+# @param $1 mod
+# @param $2 variable name
+function mod_var()
+{
+	if is_server $1
+	then
+		local mod_array="MOD_$1"
+		eval "echo \"\${mod_array}[$2]}\""
+		return 0;
+	fi
+	return 1
+}
+
+# Builds a mod
+# @param $1 mod id
+function build_mod()
+{
+	if is_mod "$1"
+	then
+		local curdir=$(pwd)
+		local build_dir=$(mod_var $1 build_dir)
+		[ -n "$build_dir" -a -d "$build_dir" ] && cd "$build_dir"
+		$(mod_var $1 build)
+		local update_cmd=$(mod_var $1 update)
+		for sv in $(mod_var $1 servers)
+		do
+			$(echo "$update_cmd" | sed "s/{}/$sv/g")
+		done
+		cd "$curdir"
+	fi
+}
+
+#######################################################################
 # Command functions
 #######################################################################
 # 
