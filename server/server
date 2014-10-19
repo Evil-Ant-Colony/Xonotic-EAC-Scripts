@@ -239,6 +239,18 @@ function dump_config()
 	do
 		echo load_plugin $plugin
 	done
+	
+	for mod in $(list_mods)
+	do
+		echo -n "define_mod $mod "
+		declare -A tmp_array
+		eval $(set -o posix; set | grep MOD_$mod | sed s/MOD_$mod/tmp_array/ )
+		for key in "${!tmp_array[@]}"
+		do
+			echo -n "$key \"${tmp_array[$key]}\" "
+		done
+		echo
+	done
 }
 
 # Print the server registration command for $1
@@ -460,16 +472,17 @@ function load_plugin()
 }
 
 #######################################################################
-# Compile functions
+# Compile/Mod functions
 #######################################################################
 # Defines a mod
 # Here a "mod" is a general entity which needs to be compiled and then 
 # requires an action on the servers
 # @param $1 mod identifier
-# @param $2 (optional) mod build command
-# @param $3 (optional) server update command, 
-#	will be executed for all the requred servers
-# @param $4+ (optional) key-value pairs 
+# @param $2+ (optional) key-value pairs 
+# Available keys:
+# 	* build:    mod build command
+# 	* update:   server update command, will be executed for all the requred servers
+#	* build_dir:directory to run the build commands in
 function define_mod()
 {
 	local modname=$1
@@ -479,16 +492,6 @@ function define_mod()
 	tmp_modarray[build_dir]=""
 	tmp_modarray[servers]=""
 	
-	if [ -n "$2" ]
-	then
-		tmp_modarray[build]="$2"
-		shift
-		if [ -n "$3" ]
-		then
-			tmp_modarray[update]="$3"
-			shift
-		fi
-	fi
 	
 	# parse settings
 	while [ -n "$1" ]
@@ -509,8 +512,8 @@ function define_mod()
 # Whether $1 is a registered mod
 function is_mod()
 {
-	[ -z "$1" ] && ! ( echo -n "$1" | grep -q "[^-a-zA-Z0-9_]" ) && \
-		exec "[ $1 -eq \$MOD_$1[name] ]"
+	[ -n "$1" ] && ! ( echo -n "$1" | grep -q "[^-a-zA-Z0-9_]" ) && \
+		(set -o posix; set | grep -Eoq "^MOD_$1=" )
 }
 
 # Get a mod variable
@@ -518,10 +521,10 @@ function is_mod()
 # @param $2 variable name
 function mod_var()
 {
-	if is_server $1
+	if is_mod $1
 	then
 		local mod_array="MOD_$1"
-		eval "echo \"\${mod_array}[$2]}\""
+		eval "echo \"\${${mod_array}[$2]}\""
 		return 0;
 	fi
 	return 1
@@ -536,14 +539,23 @@ function build_mod()
 		local curdir=$(pwd)
 		local build_dir=$(mod_var $1 build_dir)
 		[ -n "$build_dir" -a -d "$build_dir" ] && cd "$build_dir"
-		$(mod_var $1 build)
+		eval "$(mod_var $1 build)"
 		local update_cmd=$(mod_var $1 update)
-		for sv in $(mod_var $1 servers)
-		do
-			$(echo "$update_cmd" | sed "s/{}/$sv/g")
-		done
+		if [ -n "$update_cmd" ]
+		then
+			for sv in $(mod_var $1 servers)
+			do
+				eval "$(echo "$update_cmd" | sed "s/{}/$sv/g")"
+			done
+		fi
 		cd "$curdir"
 	fi
+}
+
+#List avaliable mods
+function list_mods()
+{
+	(set -o posix; set | grep -Eo "^MOD_[-a-zA-Z0-9_]+" | sed -r "s/^MOD_//" )
 }
 
 #######################################################################
@@ -711,7 +723,7 @@ function cmd_help()
 		then
 			echo -e "\t\t`cmd_${cmd_name}_help`"
 		else
-			echo "\t\t(Undocumented)"
+			echo -e "\t\t(Undocumented)"
 		fi
 	done
 	echo
@@ -1053,6 +1065,46 @@ function cmd_plugins_help()
 {
 	echo "List available and installed plugins."
 }
+function cmd_mod()
+{
+	case "$1" in
+		"")
+			list_mods
+			;;
+		build)
+			if is_mod "$2"
+			then
+				build_mod $2
+			else
+				echo "\"$2\" isn't a registered mod" 1>&2
+			fi
+			;;
+		show)
+			if [ -z "$2" ]
+			then
+				(set -o posix; set | grep -E "^MOD_[-a-zA-Z0-9_]+" | sed -r "s/^MOD_//" )
+			elif is_mod "$2"
+			then
+				(set -o posix; set | grep -E "^MOD_$2" | sed -r "s/^MOD_//" )
+			else
+				echo "\"$2\" isn't a registered mod" 1>&2
+			fi
+			;;
+		*)
+			echo "Unrecognized mod command: $1"
+	esac
+}
+function cmd_mod_help()
+{
+	echo "View and compile mods."
+	echo "\t\tCalled without arguments lists the available mods."
+	echo "\t\t\e[1mbuild\e[0m Compiles the given mod and updates the servers."
+	echo "\t\t\e[1mshow\e[0m Shows the configuration variables for all or a given mod."
+}
+function cmd_mod_synopsis()
+{
+	echo "[ \e[1mbuild\e[0m \e[4mmod\e[0m | \e[1mshow\e[0m [\e[4mmod\e[0m] ]"
+}
 
 #######################################################################
 # Script code
@@ -1070,7 +1122,7 @@ else
 fi
 
 commands=(help autocomplete ls list cmd exec view dumpconfig register quit start \
-	restart config rcon maps mapinfo install plugins)
+	restart config rcon maps mapinfo install plugins mod)
 
 command=ls_server
 run=false
