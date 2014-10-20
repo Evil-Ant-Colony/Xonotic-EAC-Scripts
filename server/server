@@ -134,15 +134,29 @@ function server_command()
 	return 1
 }
 
-# Print $1 only if it's a server
-function ls_server()
+# Check if server is running
+function server_is_running()
 {
-	if is_server $1 
-	then
-		echo $1
-		return 0
-	fi
-	return 1
+	is_server "$1" && ps o cmd | grep -Eq "-sessionid\s+$(server_var $1 sessionid)\s"
+}
+
+# Simple UDP server query for server $1
+function server_query()
+{
+	is_server "$1" || return 1
+	
+	port=$(cmd_config $1 --cvar=port | grep -Eo "[0-9]+" )
+	echo $port
+	echo -e "\xFF\xFF\xFF\xFFgetinfo" | nc -u -w 1 localhost $port
+	echo
+}
+
+# Parse a result of server_query
+# @param $1 query result
+# @param $2 key to be searched
+function server_query_parse()
+{
+	echo "$1" | grep -Eo -e "\\\\$2\\\\[^\\\\]+" | sed "s/\\\\$2\\\\//"
 }
 
 # Execute parameters $2 and following on the tmux window for the server $1
@@ -580,18 +594,45 @@ function list_mods()
 
 function cmd_list()
 {
-	command=ls_server
-	run=true
+	local servers="${@}"
+	[ -z "$1" ] && servers=${SERVERS[@]}
+	
+	for server in $servers
+	do
+		! is_server $server && continue
+
+		if ! server_is_running $server
+		then
+			echo -e "\e[1m$server\e[0m: \e[31;1mOFFLINE!\e[0m"
+			continue
+		fi
+		
+		local response=$(server_query $server)
+		local mapname=$(server_query_parse "$response" mapname)
+		local maxclients=$(server_query_parse "$response" sv_maxclients)
+		local clients=$(server_query_parse "$response" clients)
+		local hostname=$(server_query_parse "$response" hostname)
+		echo -e "\e[1m$server\e[0m: \e[33m$mapname\e[0m \e[36m$clients\e[0m/\e[36m$maxclients\e[0m - \e[32m$hostname\e[0m"
+	done
 }
 function cmd_list_help()
 {
-	echo "Print the name of each server, one per line"
+	echo "For each server, print name, current map, players and hostname"
+}
+function cmd_list_synopsis()
+{
+	echo "[\e[4mserver\e[0m...]"
 }
 
 function cmd_cmd()
 {
-	command=server_command
-	run=true
+	local servers="${@}"
+	[ -z "$1" ] && servers=${SERVERS[@]}
+	
+	for server in $servers
+	do
+		server_command "$server"
+	done
 }
 function cmd_cmd_help()
 {
@@ -622,8 +663,7 @@ function cmd_exec_synopsis()
 
 function cmd_view()
 {
-	command=tmux_server
-	run=true
+	tmux_server "$1"
 }
 function cmd_view_help()
 {
@@ -660,12 +700,36 @@ function cmd_register_synopsis()
 
 function cmd_quit()
 {
-	command=server_quit
-	run=true
+	servers="${@}"
+	[ -z "$1" ] && servers=${SERVERS[@]}
+	
+	for server in $servers
+	do
+		if ! is_server "$server"
+		then
+			echo -e "\e[31;1mError\e[39;22m:\e[0m Trying to quit unexisting server: \e[1m$server\e[0m" 1>&2
+			continue
+		fi
+		
+		if ! server_is_running $server
+		then
+			echo -e "\e[33;1mNote\e[39;22m:\e[0m Server was offline: \e[1m$server\e[0m" 1>&2
+		else
+			server_quit $server
+			
+			sleep 0.5
+			if server_is_running $server
+			then
+				echo -e "\e[31;1mError\e[39;22m:\e[0m Error while quitting server: \e[1m$server\e[0m" 1>&2
+			else
+				echo -e "\e[32;1mNote\e[39;22m:\e[0m Server quit: \e[1m$server\e[0m" 1>&2
+			fi
+		fi
+	done 
 }
 function cmd_quit_help()
 {
-	echo "Quit a server"
+	echo "Quit servers"
 }
 function cmd_quit_synopsis()
 {
@@ -674,8 +738,33 @@ function cmd_quit_synopsis()
 
 function cmd_start()
 {
-	command=server_start
-	run=true
+	servers="${@}"
+	[ -z "$1" ] && servers=${SERVERS[@]}
+	
+	for server in $servers
+	do
+		if ! is_server "$server"
+		then
+			echo -e "\e[31;1mError\e[39;22m:\e[0m Trying to start unexisting server: \e[1m$server\e[0m" 1>&2
+			continue
+		fi
+		
+		if server_is_running $server
+		then
+			echo -e "\e[33;1mWarning\e[39;22m:\e[0m Trying to start running server: \e[1m$server\e[0m" 1>&2
+			continue
+		fi
+		
+		server_start $server
+		
+		sleep 0.5
+		if server_is_running $server
+		then
+			echo -e "\e[32;1mNote\e[39;22m:\e[0m Server started: \e[1m$server\e[0m" 1>&2
+		else
+			echo -e "\e[31;1mError\e[39;22m:\e[0m Error while starting server: \e[1m$server\e[0m" 1>&2
+		fi
+	done
 }
 function cmd_start_help()
 {
@@ -688,8 +777,33 @@ function cmd_start_synopsis()
 
 function cmd_restart()
 {
-	command=server_restart
-	run=true
+	servers="${@}"
+	[ -z "$1" ] && servers=${SERVERS[@]}
+	
+	for server in $servers
+	do
+		if ! is_server "$server"
+		then
+			echo -e "\e[31;1mError\e[39;22m:\e[0m Trying to start unexisting server: \e[1m$server\e[0m" 1>&2
+			continue
+		fi
+		
+		if ! server_is_running $server
+		then
+			echo -e "\e[33;1mNote\e[39;22m:\e[0m Server was offline: \e[1m$server\e[0m" 1>&2
+			server_start $server
+		else
+			server_restart $server
+		fi
+		
+		sleep 0.5
+		if server_is_running $server
+		then
+			echo -e "\e[32;1mNote\e[39;22m:\e[0m Server started: \e[1m$server\e[0m" 1>&2
+		else
+			echo -e "\e[31;1mError\e[39;22m:\e[0m Error while starting server: \e[1m$server\e[0m" 1>&2
+		fi
+	done 
 }
 function cmd_restart_help()
 {
@@ -1124,8 +1238,7 @@ fi
 commands=(help autocomplete ls list cmd exec view dumpconfig register quit start \
 	restart config rcon maps mapinfo install plugins mod)
 
-command=ls_server
-run=false
+
 
 for plugin in ${plugins[*]}
 do
@@ -1141,10 +1254,6 @@ do
 	if [ "$1" = "$cmd_name" ] 
 	then
 		cmd_$1 ${@:2}
+		exit
 	fi
 done
-
-if $run
-then
-	foreach_server $command "${@:2}"
-fi
