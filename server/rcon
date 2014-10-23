@@ -107,6 +107,8 @@ function show_help()
 	echo -e "\tSet port to use in the multiple messages required by secure 2. Default: \e[1m$SECURE_PORT\e[0m"
 	echo -e "\e[1m-c\e[0m|\e[1m--\e[0m"
 	echo -e "\tFollowing this parameter the rest of the command line is interpreted as rcon commands.\e[0m"
+	echo -e "\e[1m-raw\e[0m"
+	echo -e "\tSend a raw command (not necessarily rcon).\e[0m"
 	echo
 	echo -e "\e[1mNOTES\e[0m"
 	echo -e " * Unrecognized paramters are interpreted as rcon commands"
@@ -116,7 +118,7 @@ function show_help()
 	echo
 }
 
-
+raw=false
 cat_command=false
 rcon_command=""
 
@@ -160,6 +162,9 @@ do
 			-c|--)
 				cat_command=true
 				;;
+			-raw)
+				raw=true
+				;;
 			*)
 				rcon_command="$rcon_command $arg"
 				;;
@@ -174,4 +179,10 @@ fi
 
 rcon_command=${rcon_command# }
 
-rcon_send $SERVER $PORT $PASSWORD $SECURE "$rcon_command"
+if $raw
+then
+	# TODO: strip infoResponse/statusResponse?
+	rcon_send_raw "$SERVER $PORT" "$rcon_command" | rcon_strip_header
+else
+	rcon_send $SERVER $PORT $PASSWORD $SECURE "$rcon_command"
+fi

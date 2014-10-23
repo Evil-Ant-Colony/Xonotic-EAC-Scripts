@@ -147,7 +147,7 @@ function server_query()
 	
 	port=$(cmd_config $1 --cvar=port | grep -Eo "[0-9]+" )
 	echo $port
-	echo -e "\xFF\xFF\xFF\xFFgetinfo" | nc -u -w 1 localhost $port
+	$SELFDIR/rcon "-p$port" -raw getinfo
 	echo
 }
 
