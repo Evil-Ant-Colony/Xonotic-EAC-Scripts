@@ -146,9 +146,7 @@ function server_query()
 	is_server "$1" || return 1
 	
 	port=$(cmd_config $1 --cvar=port | grep -Eo "[0-9]+" )
-	echo $port
-	$SELFDIR/rcon "-p$port" -raw getinfo
-	echo
+	$SELFDIR/rcon "-p$port" -info
 }
 
 # Parse a result of server_query

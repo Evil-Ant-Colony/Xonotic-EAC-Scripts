@@ -109,6 +109,12 @@ function show_help()
 	echo -e "\tFollowing this parameter the rest of the command line is interpreted as rcon commands.\e[0m"
 	echo -e "\e[1m-raw\e[0m"
 	echo -e "\tSend a raw command (not necessarily rcon).\e[0m"
+	echo -e "\e[1m-ping\e[0m"
+	echo -e "\tPing the server (replies with \"ack\").\e[0m"
+	echo -e "\e[1m-info\e[0m"
+	echo -e "\tGet server info string.\e[0m"
+	echo -e "\e[1m-status\e[0m"
+	echo -e "\tList basic player info.\e[0m"
 	echo
 	echo -e "\e[1mNOTES\e[0m"
 	echo -e " * Unrecognized paramters are interpreted as rcon commands"
@@ -118,7 +124,7 @@ function show_help()
 	echo
 }
 
-raw=false
+cmd="rcon"
 cat_command=false
 rcon_command=""
 
@@ -132,6 +138,18 @@ do
 			help|--help|-h)
 				show_help
 				exit 0
+				;;
+			-raw)
+				cmd=raw
+				;;
+			-ping)
+				cmd=ping
+				;;
+			-info)
+				cmd=info
+				;;
+			-status)
+				cmd=status
 				;;
 			-password=*|-passwd=*|-pw=*)
 				PASSWORD=${arg#*=}
@@ -162,9 +180,6 @@ do
 			-c|--)
 				cat_command=true
 				;;
-			-raw)
-				raw=true
-				;;
 			*)
 				rcon_command="$rcon_command $arg"
 				;;
@@ -172,17 +187,27 @@ do
 	fi
 done
 
-if [ -z "$rcon_command" ] 
+if [ "$cmd" = raw -o "$cmd" = rcon ] && [ -z "$rcon_command" ]
 then
 	rcon_command=$(cat)
 fi
 
 rcon_command=${rcon_command# }
 
-if $raw
+if [ "$cmd" = raw ]
 then
-	# TODO: strip infoResponse/statusResponse?
 	rcon_send_raw "$SERVER $PORT" "$rcon_command" | rcon_strip_header
+elif [ "$cmd" = info ]
+then
+	rcon_send_raw "$SERVER $PORT" getinfo | rcon_strip_header infoResponse
+	echo
+elif [ "$cmd" = status ]
+then
+	rcon_send_raw "$SERVER $PORT" getstatus | rcon_strip_header statusResponse
+elif [ "$cmd" = ping ]
+then
+	rcon_send_raw "$SERVER $PORT" ping | rcon_strip_header
+	echo
 else
 	rcon_send $SERVER $PORT $PASSWORD $SECURE "$rcon_command"
 fi
