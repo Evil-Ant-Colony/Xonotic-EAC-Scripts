@@ -1218,6 +1218,28 @@ function cmd_mod_synopsis()
 	echo "[ \e[1mbuild\e[0m \e[4mmod\e[0m | \e[1mshow\e[0m [\e[4mmod\e[0m] ]"
 }
 
+function cmd_status()
+{
+	local servers="${@}"
+	[ -z "$1" ] && servers=${SERVERS[@]}
+	
+	for server in $servers
+	do
+		local port=$(cmd_config $server --cvar=port | grep -Eo "[0-9]+" )
+		echo -e "             ----------- \e[1m$server\e[0m -----------"
+		echo "port:     $port"; 
+		cmd_rcon $server -- status 1
+	done
+}
+function cmd_status_help()
+{
+	echo "Show server status"
+}
+function cmd_status_synopsis()
+{
+	echo "[\e[4mserver\e[0m]...]"
+}
+
 #######################################################################
 # Script code
 #######################################################################
@@ -1234,7 +1256,7 @@ else
 fi
 
 commands=(help autocomplete ls list cmd exec view dumpconfig register quit start \
-	restart config rcon maps mapinfo install plugins mod)
+	restart config rcon maps mapinfo install plugins mod status)
 
 
 
