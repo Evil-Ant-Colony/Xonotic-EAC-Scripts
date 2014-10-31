@@ -15,7 +15,7 @@ ESCAPE_CHAR=$(echo -en "\x1b")
 # stdout Raw reply from the rcon server
 function rcon_send_raw()
 {
-	echo -n "$RCON_HEADER${@:2}" | nc -u -w 1 $1
+	echo -n "$RCON_HEADER${@:2}" | ./udp.py $1
 }
 
 # Send raw rcon command
@@ -200,14 +200,12 @@ then
 elif [ "$cmd" = info ]
 then
 	rcon_send_raw "$SERVER $PORT" getinfo | rcon_strip_header infoResponse
-	echo
 elif [ "$cmd" = status ]
 then
 	rcon_send_raw "$SERVER $PORT" getstatus | rcon_strip_header statusResponse
 elif [ "$cmd" = ping ]
 then
 	rcon_send_raw "$SERVER $PORT" ping | rcon_strip_header
-	echo
 else
 	rcon_send $SERVER $PORT $PASSWORD $SECURE "$rcon_command"
 fi
