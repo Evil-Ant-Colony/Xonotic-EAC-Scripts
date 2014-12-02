@@ -2,6 +2,10 @@
 import sys
 import socket
 
+if len(sys.argv) < 3:
+	print >> sys.stderr, "Wrong invocation of udp.py"
+	sys.exit(1);
+
 address = sys.argv[1]
 port    = int(sys.argv[2])
 payload = sys.stdin.read()
@@ -16,4 +20,4 @@ try:
 	(data,addr) = sock.recvfrom(1024)
 	print data
 except:
-	print "Connection failed"
+	print >> sys.stderr, "Connection failed"
