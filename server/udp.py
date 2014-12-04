@@ -1,14 +1,14 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 import sys
 import socket
 
 if len(sys.argv) < 3:
-	print >> sys.stderr, "Wrong invocation of udp.py"
-	sys.exit(1);
+	print("Wrong invocation of udp.py", file=sys.stderr)
+	sys.exit(1)
 
 address = sys.argv[1]
 port    = int(sys.argv[2])
-payload = sys.stdin.read()
+payload = sys.stdin.buffer.read()
 readsize= 1024
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM);
@@ -18,6 +18,6 @@ sock.sendto(payload, (address, port))
 
 try:
 	(data,addr) = sock.recvfrom(1024)
-	print data
+	sys.stdout.buffer.write(data)
 except:
-	print >> sys.stderr, "Connection failed"
+	print("Connection failed", file=sys.stderr)
