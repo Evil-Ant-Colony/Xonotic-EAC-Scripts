@@ -1,11 +1,12 @@
 #!/bin/bash
-# TODO Port everything to the python script
 SERVER='localhost'
 PORT='26000'
 PASSWORD='foo'
 SECURE=0
 SECURE_PORT="1234"
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
+UDP_SCRIPT=
+UDP_ARGS=
 
 RCON_HEADER=$(echo -e "\xff\xff\xff\xff")
 ESCAPE_CHAR=$(echo -en "\x1b")
@@ -16,7 +17,7 @@ ESCAPE_CHAR=$(echo -en "\x1b")
 # stdout Raw reply from the rcon server
 function rcon_send_raw()
 {
-	echo -n "$RCON_HEADER${@:2}" | "$SELFDIR/udp.py" $1
+	echo -n "$RCON_HEADER${@:2}" | "$UDP_SCRIPT" $UDP_ARGS $1
 }
 
 # Send raw rcon command
@@ -124,6 +125,20 @@ function show_help()
 	echo -e " * If the command produces some output, it is shown on standard output"
 	echo
 }
+
+if [ -z "$UDP_SCRIPT" ]
+then
+	if php -v >/dev/null
+	then
+		UDP_SCRIPT="$SELFDIR/udp.php"
+	elif python3 --version >/dev/null
+	then
+		UDP_SCRIPT="$SELFDIR/udp.py"
+	else
+		UDP_SCRIPT=nc
+		UDP_ARGS=-u -w 1
+	fi
+fi
 
 cmd="rcon"
 cat_command=false
