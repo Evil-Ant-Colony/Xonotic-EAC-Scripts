@@ -26,6 +26,27 @@ function install_packages()
 	done
 }
 
+function download_repo()
+{
+	local repo
+	if $SSH 
+	then
+		repo="$1"
+	else
+		repo="$2"
+	fi
+	
+	local name=$(basename "$repo" .git)
+	
+	if [ -d "$name" ]
+	then
+		echo "Found $name"
+	else
+		echo "Downloading $name"
+		git clone "$repo"
+	fi
+}
+
 function post_install()
 {
 	MAKE_FLAGS="-j 8"
@@ -43,42 +64,24 @@ function post_install()
 	else
 		SSH=false
 	fi
-		
-	echo "Downloading Xonotic"
-	XON_REPO="http://de.git.xonotic.org/xonotic/xonotic.git"
-	$SSH && XON_REPO="ssh://git@gitlab.com/xonotic/xonotic.git"
-	git clone "$XON_REPO"
 	
-	echo "Downloading Modpack"
-	MOD_REPO="https://github.com/MarioSMB/modpack.git"
-	$SSH && MOD_REPO="git@github.com:MarioSMB/modpack.git"
-	git clone "$MOD_REPO"
-	
-	echo "Downloading Borgy"
-	BORGY_REPO="https://github.com/mbasaglia/Simple_IRC_Bot.git"
-	$SSH && BORGY_REPO="git@github.com:mbasaglia/Simple_IRC_Bot.git"
-	git clone "$BORGY_REPO" Melanobot
-	
-	if [ ! -d Xonotic-EAC-Scripts ]
-	then
-		echo "Downloading Scripts"
-		SCRIPTS_REPO="https://github.com/Evil-Ant-Colony/Xonotic-EAC-Scripts.git"
-		$SSH && SCRIPTS_REPO="git@github.com:Evil-Ant-Colony/Xonotic-EAC-Scripts.git"
-		git clone "$SCRIPTS_REPO"
-	fi
+	download_repo "http://de.git.xonotic.org/xonotic/xonotic.git" "ssh://git@gitlab.com/xonotic/xonotic.git"
+	download_repo "https://github.com/MarioSMB/modpack.git"       "git@github.com:MarioSMB/modpack.git"
+	download_repo "https://github.com/mbasaglia/Melanobot.git"    "git@github.com:mbasaglia/Melanobot.git"
+	download_repo "https://github.com/Evil-Ant-Colony/Xonotic-EAC-Scripts.git" "git@github.com:Evil-Ant-Colony/Xonotic-EAC-Scripts.git"
 	
 	echo "Building Xonotic"
-	( cd xonotic && ./all update && ./all compile -0 dedicated $MAKE_FLAGS )
+	( cd ~/src/xonotic && ./all update && ./all compile -0 dedicated $MAKE_FLAGS )
 	
 	echo "Building Modpack"
-	( cd modpack/qcsrc && make QCC=~/src/xonotic/gmqcc/gmqcc $MAKE_FLAGS )
+	( cd ~/src/modpack/qcsrc && make QCC=~/src/xonotic/gmqcc/gmqcc $MAKE_FLAGS )
 	
 	echo "Setting up executables"
 	! [ -d bin ] && mkdir bin
 	ln -s "$PWD/Xonotic-EAC-Scripts/server/server" ~/bin
 	ln -s "$PWD/xonotic/gmqcc/gmqcc" ~/bin
-	echo >>.bashrc
-	echo ". $PWD/Xonotic-EAC-Scripts/server/autocomplete.sh" >>.bashrc
+	echo >>~/.bashrc
+	echo ". $PWD/Xonotic-EAC-Scripts/server/autocomplete.sh" >>~/.bashrc
 	
 	echo "All set!"
 
@@ -119,6 +122,7 @@ then
 	install_packages
 	
 	export -f post_install
+	export -f download_repo
 	su $USER -c post_install
 else
 	echo "You are not root"
