@@ -1,23 +1,75 @@
 #!/bin/bash
 
-SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
-source $SELFDIR/source-pk3-utils.sh
+EXCLUDE=
+#"quickmenu|hats|vehicles"
+DIRECTORY=.
+REMOVE=true
+FORCE=false
 
-readme=https://raw.github.com/MarioSMB/esk-modpack/master/README.md
-files=$(wget -q -O - $readme | grep -oE "http[^ ]+\.pk3" | grep -vE "quickmenu|hats|vehicles")
+while [ -n "$1" ]
+do
+	case $1 in
+		-f|--force) 
+			FORCE=true
+			;;
+		--keep|-k)
+			REMOVE=false
+			;;
+		-d)
+			shift
+			DIRECTORY="$1"
+			;;
+		--dir=*)
+			DIRECTORY=$(echo "$1" | sed s/--dir=//)
+			;;
+		--exclude=*)
+			EXCLUDE=$(echo "$1" | sed s/--dir=//)
+			;;
+		-e)
+			shift
+			EXCLUDE="$1"
+			;;
+		-h|--help|help)
+			echo "$0 - Download modpack pk3's"
+			echo "Options:"
+			echo -e "\t\e[1m-f\e[22m, \e[1m--force\e[22m"
+			echo -e "\t\tForce download (overwrite existing files)"
+			echo -e "\t\e[1m-d \e[4;22mdirectory\e[0m, \e[1m--dir=\e[4;22mdirectory\e[0m"
+			echo -e "\t\tSet download directory"
+			echo -e "\t\e[1m-e \e[4;22mpattern\e[0m, \e[1m--exclude=\e[4;22mpattern\e[0m"
+			echo -e "\t\tSet regular expression for files which will not be downloaded"
+			exit
+			;;
+	esac
+	
+	shift
+done
+
+readme=https://raw.github.com/MarioSMB/modpack/master/README.md
+files=$(wget -q -O - $readme | grep -oE "http[^ ]+\.pk3" )
+[ -z "$EXCLUDE" ] || files=$(echo "$files" | grep -vE "$EXCLUDE")
 
 for f in $files
 do
 	file_name=$(basename $f)
+	file_prefix=$( echo "$file_name" | grep -oE "zzz-[^-_]*")
+	full_filename="$DIRECTORY/$file_name"
+	
 	echo -e "\e[32m$file_name\e[0m"
-	for d in ${ALL_PK3_DIRS[@]}
-	do
-		if [ ! -f $d/$file_name ]
-		then
-			wget -O $d/$file_name $f
-		else
-			echo -e "\t $d/$file_name already here"
-		fi
-	done
+	
+	if $REMOVE 
+	then
+		find "$DIRECTORY" -name "$file_prefix"'*.pk3' -a -not -name "$file_name" -printf "\033[31mRemoving %f\033[0m\n" -delete
+	fi
+	
+	if $FORCE || [ ! -f "$full_filename" ]
+	then
+		wget -O "$full_filename" $f
+	else
+		echo "$file_name already here"
+	fi
+	
+	echo
+	
 done
 
