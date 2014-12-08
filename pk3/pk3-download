@@ -34,6 +34,8 @@ do
 			echo "Options:"
 			echo -e "\t\e[1m-f\e[22m, \e[1m--force\e[22m"
 			echo -e "\t\tForce download (overwrite existing files)"
+			echo -e "\t\e[1m-k\e[22m, \e[1m--keep\e[22m"
+			echo -e "\t\tDon't delete outdated files"
 			echo -e "\t\e[1m-d \e[4;22mdirectory\e[0m, \e[1m--dir=\e[4;22mdirectory\e[0m"
 			echo -e "\t\tSet download directory"
 			echo -e "\t\e[1m-e \e[4;22mpattern\e[0m, \e[1m--exclude=\e[4;22mpattern\e[0m"
