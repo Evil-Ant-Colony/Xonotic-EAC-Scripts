@@ -51,9 +51,6 @@ function post_install()
 {
 	MAKE_FLAGS="-j 8"
 
-	cd ~
-	! [ -d src ] && mkdir src
-	cd src
 	
 	if [ -f ~/.ssh/id_rsa ]
 	then
@@ -65,6 +62,8 @@ function post_install()
 		SSH=false
 	fi
 	
+	! [ -d ~/src ] && mkdir ~/src
+	cd ~/src
 	download_repo "http://de.git.xonotic.org/xonotic/xonotic.git" "ssh://git@gitlab.com/xonotic/xonotic.git"
 	download_repo "https://github.com/MarioSMB/modpack.git"       "git@github.com:MarioSMB/modpack.git"
 	download_repo "https://github.com/mbasaglia/Melanobot.git"    "git@github.com:mbasaglia/Melanobot.git"
@@ -77,11 +76,15 @@ function post_install()
 	( cd ~/src/modpack/qcsrc && make QCC=~/src/xonotic/gmqcc/gmqcc $MAKE_FLAGS )
 	
 	echo "Setting up executables"
-	! [ -d bin ] && mkdir bin
+	! [ -d ~/bin ] && mkdir ~/bin
 	ln -s "$PWD/Xonotic-EAC-Scripts/server/server" ~/bin
 	ln -s "$PWD/xonotic/gmqcc/gmqcc" ~/bin
-	echo >>~/.bashrc
-	echo ". $PWD/Xonotic-EAC-Scripts/server/autocomplete.sh" >>~/.bashrc
+	
+	if ! grep -qF Xonotic-EAC-Scripts/server/autocomplete.sh ~/.bashrc
+	then
+		echo >>~/.bashrc
+		echo ". $PWD/Xonotic-EAC-Scripts/server/autocomplete.sh" >>~/.bashrc
+	fi
 	
 	echo "All set!"
 
@@ -98,28 +101,47 @@ then
 	echo "Executing as root"
 	if [ -n "$1" ]
 	then
-		USER="$1"
+		INSTALL_USER="$1"
 	else
-		USER=$(pwd | sed -r -e "s~/home/~~" -e "s~/.*~~")
+		INSTALL_USER=$(pwd | sed -r -e "s~/home/~~" -e "s~/.*~~")
 	fi
 	
 	
 	while true
 	do
-		if [ -n "$USER" ]
+		if [ -n "$INSTALL_USER" ]
 		then
-			echo "Selected installation user: $USER"
+			echo "Selected installation user: $INSTALL_USER"
 			echo  -n "Confirm? [y|n] "
 			read user_ok
 			[ "$user_ok" = 'y' ] && break
 		fi
 		
 		echo -n "Enter installation user name: "
-		read USER
-		id -u "$USER" || USER=
+		read INSTALL_USER
+		id -u "$INSTALL_USER" || INSTALL_USER=
 	done
 	
 	install_packages
+	
+	echo "Setting up init.d"
+	borgy_initd=borgy
+	borgy_initd_file="/etc/init.d/$borgy_initd"
+	cat >"$borgy_initd_file" <<INITD
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:             borgy
+# Required-Start:       \$local_fs \$network
+# Required-Stop:        \$local_fs \$network
+# Default-Start:        2 3 4 5
+# Default-Stop:         0 1 6
+# Description:          Borgy, the evil IRC bot
+### END INIT INFO
+
+sudo -u $INSTALL_USER bash /home/$INSTALL_USER/src/Melanobot/init.d/borgy $*
+INITD
+	chmod 755 "$borgy_initd_file"
+	update-rc.d "$borgy_initd" defaults
 	
 	export -f post_install
 	export -f download_repo
