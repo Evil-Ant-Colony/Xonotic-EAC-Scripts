@@ -70,7 +70,7 @@ function post_install()
 	download_repo "https://github.com/Evil-Ant-Colony/Xonotic-EAC-Scripts.git" "git@github.com:Evil-Ant-Colony/Xonotic-EAC-Scripts.git"
 	
 	echo "Building Xonotic"
-	( cd ~/src/xonotic && ./all update && ./all compile -0 dedicated $MAKE_FLAGS )
+	( cd ~/src/xonotic && touch data/xonotic-maps.pk3dir.no && ./all update && ./all compile -0 dedicated $MAKE_FLAGS )
 	
 	echo "Building Modpack"
 	( cd ~/src/modpack/qcsrc && make QCC=~/src/xonotic/gmqcc/gmqcc $MAKE_FLAGS )
