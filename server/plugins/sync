@@ -1,0 +1,25 @@
+#!/bin/bash 
+# Copies missing pk3 files from the server data directories to the HTTP directory
+
+if [ "$1" = "help" ]
+then
+	echo Ensure the HTTP directory contains all the needed pk3s
+	exit 0
+elif [ "$1" = "synopsis" ]
+then
+	echo -n "[\e[4mserver\e[0m...]"
+	exit 0
+fi
+
+
+servers="${@}"
+[ -z "$1" ] && servers=$SERVER_NAMES
+
+for serv in $servers
+do
+	eval "servdir=\$SERVER_${serv}_main_dir"
+	if ls "$servdir"/*.pk3 &>/dev/null
+	then
+		rsync -t --chmod=a+r "$servdir"/*.pk3 "$PK3_PUBLIC_DIR"
+	fi
+done

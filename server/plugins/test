@@ -1,6 +1,5 @@
 #!/bin/bash
 # An example plugin
-# Note: toggle the execution permission to enable or disable this plugin.
 
 if [ "$1" = "help" ]
 then

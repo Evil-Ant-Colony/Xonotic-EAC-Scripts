@@ -11,6 +11,7 @@ PK3_PUBLIC_DIR=
 TEMPDIR=/tmp
 WRITABLE_VARS=(GAME_CMD GAME_PARAMS TEXT_EDITOR PK3_PUBLIC_DIR TEMPDIR)
 WRITABLE_SERVER_VARS=(sessionid serverconfig gamedir args)
+READABLE_SERVER_VARS=(main_dir full_args)
 SELFDIR=$(dirname $(readlink -se "${BASH_SOURCE[0]}"))
 CONFIG_FILE="$SELFDIR/server.conf"
 TEXT_EDITOR=sensible-editor
@@ -27,6 +28,9 @@ WRITABLE_SERVER_VARS_help[sessionid]="Session id, defaults to \e[4mserver_id\e[0
 WRITABLE_SERVER_VARS_help[serverconfig]="Server config file, defaults to is \"cfg/server-\e[4mserver_id\e[0m.cfg\"."
 WRITABLE_SERVER_VARS_help[gamedir]="Server game data directory, defaults to \"data/\e[4mserver_id\e[0m\"."
 WRITABLE_SERVER_VARS_help[args]="Additional command line arguments used when starting the server, default empty."
+declare -A READABLE_SERVER_VARS_help
+READABLE_SERVER_VARS_help[main_dir]="Fullpath for gamedir"
+READABLE_SERVER_VARS_help[full_args]="All command line arguments specific to this server"
 
 #######################################################################
 # Server functions
@@ -450,7 +454,7 @@ function plugin()
 			declare -A tmp_serverarray
 			eval $(set -o posix; set | grep SERVER_$server | sed s/SERVER_$server/tmp_serverarray/ )
 			
-			for key in ${WRITABLE_SERVER_VARS[@]}
+			for key in ${WRITABLE_SERVER_VARS[@]} ${READABLE_SERVER_VARS}
 			do
 				export "SERVER_${server}_$key"="${tmp_serverarray[$key]}"
 			done
@@ -864,11 +868,19 @@ function cmd_help()
 	echo -e "\t\e[1mregister_server\e[0m \e[4mserver_id\e[0m [\e[4moption\e[0m \e[4mvalue\e[0m]]..."
 	echo -e "\t\tRegisters a game server with the given id."
 	echo
-	echo -e "\e[1mServer Options\e[0m"
+	echo -e "\e[1mWritable Server Options\e[0m"
+	echo -e "\tThese options can be used with \e[1mregister_server\e[0m\n"
 	for var in ${WRITABLE_SERVER_VARS[@]}
 	do
 		echo -e "\t\e[1m$var\e[0m"
 		echo -e "\t\t${WRITABLE_SERVER_VARS_help[$var]}"
+	done
+	echo -e "\e[1mRead-Only Server Options\e[0m"
+	echo -e "\tThese options can be accessed from plugins\n"
+	for var in ${READABLE_SERVER_VARS[@]}
+	do
+		echo -e "\t\e[1m$var\e[0m"
+		echo -e "\t\t${READABLE_SERVER_VARS_help[$var]}"
 	done
 	echo
 	echo -e "\e[1mPLUGINS\e[0m"
@@ -1237,7 +1249,7 @@ function cmd_status_help()
 }
 function cmd_status_synopsis()
 {
-	echo "[\e[4mserver\e[0m]...]"
+	echo "[\e[4mserver\e[0m...]"
 }
 
 #######################################################################
