@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# @brief Prints a list of files in a pk3
+# @param $1 pk3 name
+function pk3_files()
+{
+	#unzip -l $1 | head -n -2 | tail -n +4 | sed -r s/^[^a-z]+//
+	zipinfo -1 $1
+}
+
+# @brief Prints a list of files in a pk3 matching a given pattern
+# @param $1 pk3 name
+# @param $2 regex pattern
+function pk3_list
+{
+	pk3_files "$1" | grep -Ei "$2"
+}
+
+# @brief Prints all map files in a pk3
+# @param $1 pk3 name
+function pk3_maps()
+{
+	pk3_list "$1" "\.bsp$"
+}
+
+
+
+
+# @brief print all screenshots files in a pk3
+# @param $1 pk3 name
+function pk3_screenshots()
+{
+	for map in $(pk3_maps "$1")
+	do
+		map=$(basename "$map" | sed -r -e "s/\.bsp$//i" -e 's~([.[$^*?|\(\)]|])~\\\1~g')
+		for screenshot in $(pk3_list "$1" "(maps|levelshots)/$map\.(jpg|jpeg|tga|png)")
+		do
+			[ "$COPY_DIR" -a ! -d "$COPY_DIR" ] && mkdir -p "$COPY_DIR"
+			
+			extr_file="$COPY_DIR/$(basename "$screenshot" | tr [A-Z] [a-z] | sed -r "s/\.jpeg$/.jpg/")"
+			extension="$(echo "$extr_file" | grep -Eo "\.[^.]+$")"
+			conv_file="$(echo "$extr_file" | sed -r "s/$extension$/.jpg/")"
+			
+			if [ ! -f "$conv_file" ]
+			then
+				unzip -p "$1" "$screenshot" >"$extr_file"
+				if [ "$extr_file" != "$conv_file" ]
+				then
+					convert "$extr_file" "$conv_file"
+					rm "$extr_file"
+				fi
+			fi
+		done
+	done
+}
+
+
+COPY_DIR=maps
+
+while [ "$1" ]
+do
+	case "$1" in
+		help|--help|-h)
+			echo "TODO: more useful help, sorry!"
+		;;
+		-o)
+			shift
+			[ "$1" ] && COPY_DIR="$1"
+		;;
+		--dir=*)
+			 COPY_DIR="$(echo "$1" | sed 's/.*=//')"
+		;;
+		*.pk3)
+			pk3_screenshots "$1"
+		;;
+		*)
+			echo Skipping unknown option "$1"
+		;;
+	esac
+	shift
+done
