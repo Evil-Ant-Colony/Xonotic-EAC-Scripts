@@ -444,6 +444,7 @@ function plugin()
 	filename="$PLUGINDIR/$1";
 	if [ -f "$filename" -a -x "$filename" ]
 	then
+		export SERVER_SCRIPT_DIR=$SELFDIR
 		for var in ${WRITABLE_VARS[@]}
 		do
 			export $var
@@ -900,6 +901,7 @@ function cmd_help()
 	echo -e "\t\t * All the writable global options (see above)"
 	echo -e "\t\t * The variable \e[1mSERVER_NAMES\e[0m, containing the server names"
 	echo -e "\t\t * All the writable server options as \e[1mSERVER_\e[22;4mserver\e[24;1m_\e[22;4moption\e[0m"
+	echo -e "\t\t * The variable \e[1mSERVER_SCRIPT_DIR\e[0m, containing the path to $0"
 	echo
 	
 }

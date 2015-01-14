@@ -2,9 +2,10 @@
 
 EXCLUDE=
 #"quickmenu|hats|vehicles"
-DIRECTORY=.
+DIRECTORIES=()
 REMOVE=true
 FORCE=false
+README=https://raw.github.com/MarioSMB/modpack/master/README.md
 
 while [ -n "$1" ]
 do
@@ -17,10 +18,10 @@ do
 			;;
 		-d)
 			shift
-			DIRECTORY="$1"
+			DIRECTORIES+=("$1")
 			;;
 		--dir=*)
-			DIRECTORY=$(echo "$1" | sed s/--dir=//)
+			DIRECTORIES+=("$(echo "$1" | sed s/--dir=//)")
 			;;
 		--exclude=*)
 			EXCLUDE=$(echo "$1" | sed s/--dir=//)
@@ -47,29 +48,50 @@ do
 	shift
 done
 
-readme=https://raw.github.com/MarioSMB/modpack/master/README.md
-files=$(wget -q -O - $readme | grep -oE "http[^ ]+\.pk3" )
+files=$(wget -q -O - "$README" | grep -oE "http[^ ]+\.pk3" )
 [ -z "$EXCLUDE" ] || files=$(echo "$files" | grep -vE "$EXCLUDE")
+
+
+if [ "${#DIRECTORIES}" -eq 0 ]
+then
+	DIRECTORIES=(.)
+fi
 
 for f in $files
 do
 	file_name=$(basename $f)
 	file_prefix=$( echo "$file_name" | grep -oE "zzz-[^-_]*")
-	full_filename="$DIRECTORY/$file_name"
 	
 	echo -e "\e[32m$file_name\e[0m"
 	
-	if $REMOVE 
-	then
-		find "$DIRECTORY" -name "$file_prefix"'*.pk3' -a -not -name "$file_name" -printf "\033[31mRemoving %f\033[0m\n" -delete
-	fi
+	download=true
+	copy_path="${DIRECTORIES[0]}/$file_name"
 	
-	if $FORCE || [ ! -f "$full_filename" ]
-	then
-		wget -O "$full_filename" $f
-	else
-		echo "$file_name already here"
-	fi
+	for curr_dir in "${DIRECTORIES[@]}"
+	do
+		echo Directory "$curr_dir"
+		full_filename="$curr_dir/$file_name"
+	
+		if $REMOVE 
+		then
+			find "$curr_dir" -name "$file_prefix"'*.pk3' -a -not -name "$file_name" -printf "\033[31mRemoving %f\033[0m\n" -delete
+		fi
+		
+		if $FORCE || [ ! -f "$full_filename" ]
+		then
+			if $download
+			then
+				wget -O "$full_filename" $f
+			else
+				echo "Copying $copy_path"
+				cp "$copy_path" "$curr_dir"
+			fi
+		else
+			echo "$file_name already here"
+		fi
+		
+		download=false
+	done
 	
 	echo
 	

@@ -1,0 +1,21 @@
+#!/bin/bash 
+# Downloads pk3s from the modpack
+
+if [ "$1" = "help" ]
+then
+	echo Downloads pk3s from the modpack
+	exit 0
+elif [ "$1" = "synopsis" ]
+then
+	exit 0
+fi
+
+exclude="quickmenu|hats|vehicles"
+dirs=("--dir=$PK3_PUBLIC_DIR")
+for serv in $SERVER_NAMES
+do
+	eval "servdir=\$SERVER_${serv}_main_dir"
+	dirs += "--dir=$servdir"
+done
+
+"$SERVER_SCRIPT_DIR/../pk3/pk3-download" "${dirs[@]}" -e "$exclude"
