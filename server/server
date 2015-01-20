@@ -472,7 +472,7 @@ function load_plugins()
 	plugins=()
 	for plugin in $(find $PLUGINDIR -type f -executable -exec basename {} \;)
 	do
-		plugins+="$plugin"
+		plugins+=("$plugin")
 	done
 }
 
@@ -481,7 +481,7 @@ function load_plugin()
 {
 	if [ -f "$PLUGINDIR/$1" -a -x "$PLUGINDIR/$1" ]
 	then
-		plugins+="$1"
+		plugins+=("$1")
 	else
 		echo "Trying to load an invalid plugin: $1" 1>&2
 		return 1
