@@ -32,20 +32,21 @@ function rcon_send()
 	local PORT=$2
 	local PASSWORD=$3
 	local COMMAND=${@:5}
+	local header=n
+	$daemon && header=print
 	case $4 in
 		0)
-			rcon_send_raw "$SERVER $PORT" rcon $PASSWORD $COMMAND | rcon_strip_header n | rcon_recolor
+			rcon_send_raw "$SERVER $PORT" rcon $PASSWORD $COMMAND | rcon_strip_header "$header" | rcon_recolor
 			;;
 		1)
 			local time=$(printf "%ld.%06d" $(date +%s) $RANDOM)
 			local hash=$(rcon_hash $PASSWORD "$time $COMMAND")
-			rcon_send_raw "$SERVER $PORT" "srcon HMAC-MD4 TIME $hash $time $COMMAND" | rcon_strip_header n | rcon_recolor
+			rcon_send_raw "$SERVER $PORT" "srcon HMAC-MD4 TIME $hash $time $COMMAND" | rcon_strip_header "$header" | rcon_recolor
 			;;
 		2)
-			local challenge=$(rcon_send_raw "-p $SECURE_PORT $SERVER $PORT" getchallenge) # | rcon_strip_header "challenge " )
-			challenge=$(echo -n $challenge | rcon_strip_header "challenge "  |  head -c 11)
+			local challenge="$(dp_challenge)"
 			local hash=$(rcon_hash $PASSWORD "$challenge $COMMAND")
-			rcon_send_raw "-p $SECURE_PORT $SERVER $PORT" "srcon HMAC-MD4 CHALLENGE $hash $challenge $COMMAND"  | rcon_strip_header n | rcon_recolor
+			rcon_send_raw "-p $SECURE_PORT $SERVER $PORT" "srcon HMAC-MD4 CHALLENGE $hash $challenge $COMMAND"  | rcon_strip_header "$header" | rcon_recolor
 			;;
 		*)
 			echo 1>&2 Unsupported protocol
@@ -88,6 +89,30 @@ function rcon_recolor()
 	echo -en "${ESCAPE_CHAR}[0m"
 }
 
+# Requests (and prints) a Daemon challenge
+function daemon_challenge()
+{
+	local challenge="$(rcon_send_raw "$SERVER $PORT" getchallenge)"
+	echo "$challenge" | rcon_strip_header "challengeResponse "
+}
+
+# Requests (and prints) a Darkplaces challenge
+function dp_challenge()
+{
+	local challenge=$(rcon_send_raw "-p $SECURE_PORT $SERVER $PORT" getchallenge) # | rcon_strip_header "challenge " )
+	challenge=$(echo -n $challenge | rcon_strip_header "challenge "  |  head -c 11)
+}
+
+function challenge()
+{
+	if $daemon
+	then
+		daemon_challenge
+	else
+		challenge
+	fi
+}
+
 function show_help()
 {
 	echo -e "\e[1mNAME\e[0m"
@@ -100,12 +125,16 @@ function show_help()
 	echo -e "\e[1mOPTIONS\e[0m"
 	echo -e "\e[1m-host=\e[22;4mserver\e[0m[\e[1m:\e[22;4mport\e[0m]"
 	echo -e "\tSet rcon server (and port). Default: \e[1m$SERVER\e[0m"
+	echo -e "\e[1m-password=\e[22;4mpassword\e[0m | \e[1m-passwd=\e[22;4mpassword\e[0m | \e[1m-pwd=\e[22;4mpassword\e[0m"
+	echo -e "\tSet rcon password"
 	echo -e "\e[1m-p\e[22;4mport\e[0m|\e[1m-P\e[22;4mport\e[0m|\e[1m-port=\e[22;4mport\e[0m"
 	echo -e "\tSet rcon server port. Default: \e[1m$PORT\e[0m"
 	echo -e "\e[1m-secure=\e[22;4msecure\e[0m|\e[1m-s=\e[22;4msecure\e[0m"
 	echo -e "\tSet rcon secure protocol. Default: \e[1m$SECURE\e[0m"
 	echo -e "\e[1m-secure-port=\e[22;4mport\e[0m|\e[1m-sp=\e[22;4mport\e[0m"
 	echo -e "\tSet port to use in the multiple messages required by secure 2. Default: \e[1m$SECURE_PORT\e[0m"
+	echo -e "\e[1m-daemon\e[0m"
+	echo -e "\tUse a Daemon-compatible protocol"
 	echo -e "\e[1m-c\e[0m|\e[1m--\e[0m"
 	echo -e "\tFollowing this parameter the rest of the command line is interpreted as rcon commands.\e[0m"
 	echo -e "\e[1m-raw\e[0m"
@@ -116,6 +145,8 @@ function show_help()
 	echo -e "\tGet server info string.\e[0m"
 	echo -e "\e[1m-status\e[0m"
 	echo -e "\tList basic player info.\e[0m"
+	echo -e "\e[1m-challenge\e[0m"
+	echo -e "\tRequest a challenge.\e[0m"
 	echo
 	echo -e "\e[1mNOTES\e[0m"
 	echo -e " * Unrecognized paramters are interpreted as rcon commands"
@@ -128,6 +159,7 @@ function show_help()
 cmd="rcon"
 cat_command=false
 rcon_command=""
+daemon=false
 
 for arg in $@
 do
@@ -178,6 +210,12 @@ do
 			-secure-port=*|-sp=*)
 				SECURE_PORT=${arg#*=}
 				;;
+			-daemon)
+				daemon=true
+				;;
+			-challenge)
+				cmd=challenge
+				;;
 			-c|--)
 				cat_command=true
 				;;
@@ -195,18 +233,27 @@ fi
 
 rcon_command=${rcon_command# }
 
-if [ "$cmd" = raw ]
-then
-	rcon_send_raw "$SERVER $PORT" "$rcon_command" | rcon_strip_header
-elif [ "$cmd" = info ]
-then
-	rcon_send_raw "$SERVER $PORT" getinfo | rcon_strip_header infoResponse
-elif [ "$cmd" = status ]
-then
-	rcon_send_raw "$SERVER $PORT" getstatus | rcon_strip_header statusResponse
-elif [ "$cmd" = ping ]
-then
-	rcon_send_raw "$SERVER $PORT" ping | rcon_strip_header
-else
-	rcon_send $SERVER $PORT $PASSWORD $SECURE "$rcon_command"
-fi
+case "$cmd" in
+	raw)
+		rcon_send_raw "$SERVER $PORT" "$rcon_command" | rcon_strip_header
+		;;
+	info)
+		arg="getinfo"
+		$daemon && arg="$arg $(daemon_challenge)"
+		rcon_send_raw "$SERVER $PORT" "$arg" | rcon_strip_header infoResponse
+		;;
+	status)
+		arg="getstatus"
+		$daemon && arg="$arg $(daemon_challenge)"
+		rcon_send_raw "$SERVER $PORT" "$arg" | rcon_strip_header statusResponse
+		;;
+	ping)
+		rcon_send_raw "$SERVER $PORT" ping | rcon_strip_header
+		;;
+	challenge)
+		challenge
+		;;
+	*)
+		rcon_send $SERVER $PORT $PASSWORD $SECURE "$rcon_command"
+		;;
+esac
