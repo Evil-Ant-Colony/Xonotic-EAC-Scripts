@@ -16,7 +16,8 @@ ESCAPE_CHAR=$(echo -en "\x1b")
 # stdout Raw reply from the rcon server
 function rcon_send_raw()
 {
-	echo -n "$RCON_HEADER${@:2}" | "$SELFDIR/udp.py" $1
+	#echo -n "$RCON_HEADER${@:2}" | "$SELFDIR/udp.py" $1
+	echo -n "$RCON_HEADER${@:2}" | nc -u -q1 $1
 }
 
 # Send raw rcon command
@@ -238,14 +239,10 @@ case "$cmd" in
 		rcon_send_raw "$SERVER $PORT" "$rcon_command" | rcon_strip_header
 		;;
 	info)
-		arg="getinfo"
-		$daemon && arg="$arg $(daemon_challenge)"
-		rcon_send_raw "$SERVER $PORT" "$arg" | rcon_strip_header infoResponse
+		rcon_send_raw "$SERVER $PORT" getinfo | rcon_strip_header infoResponse
 		;;
 	status)
-		arg="getstatus"
-		$daemon && arg="$arg $(daemon_challenge)"
-		rcon_send_raw "$SERVER $PORT" "$arg" | rcon_strip_header statusResponse
+		rcon_send_raw "$SERVER $PORT" getstatus | rcon_strip_header statusResponse
 		;;
 	ping)
 		rcon_send_raw "$SERVER $PORT" ping | rcon_strip_header
