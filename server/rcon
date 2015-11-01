@@ -27,27 +27,25 @@ function rcon_send_raw()
 # $4	 Secure protocol
 # $5...	 Rcon command
 # stdout Reply from the rcon server
-function rcon_send()
+function dp_rcon_send()
 {
 	local SERVER=$1
 	local PORT=$2
 	local PASSWORD=$3
 	local COMMAND=${@:5}
-	local header=n
-	$daemon && header=print
 	case $4 in
 		0)
-			rcon_send_raw "$SERVER $PORT" rcon $PASSWORD $COMMAND | rcon_strip_header "$header" | rcon_recolor
+			rcon_send_raw "$SERVER $PORT" rcon $PASSWORD $COMMAND | rcon_strip_header n | rcon_recolor
 			;;
 		1)
 			local time=$(printf "%ld.%06d" $(date +%s) $RANDOM)
-			local hash=$(rcon_hash $PASSWORD "$time $COMMAND")
-			rcon_send_raw "$SERVER $PORT" "srcon HMAC-MD4 TIME $hash $time $COMMAND" | rcon_strip_header "$header" | rcon_recolor
+			local hash=$(dp_rcon_hash $PASSWORD "$time $COMMAND")
+			rcon_send_raw "$SERVER $PORT" "srcon HMAC-MD4 TIME $hash $time $COMMAND" | rcon_strip_header n | rcon_recolor
 			;;
 		2)
 			local challenge="$(dp_challenge)"
-			local hash=$(rcon_hash $PASSWORD "$challenge $COMMAND")
-			rcon_send_raw "-p $SECURE_PORT $SERVER $PORT" "srcon HMAC-MD4 CHALLENGE $hash $challenge $COMMAND"  | rcon_strip_header "$header" | rcon_recolor
+			local hash=$(dp_rcon_hash $PASSWORD "$challenge $COMMAND")
+			rcon_send_raw "-p $SECURE_PORT $SERVER $PORT" "srcon HMAC-MD4 CHALLENGE $hash $challenge $COMMAND"  | rcon_strip_header n | rcon_recolor
 			;;
 		*)
 			echo 1>&2 Unsupported protocol
@@ -56,13 +54,61 @@ function rcon_send()
 	esac
 }
 
+# Send raw rcon command
+# $1	 Server
+# $2	 Port
+# $3	 Password
+# $4	 Secure protocol
+# $5...	 Rcon command
+# stdout Reply from the rcon server
+function daemon_rcon_send()
+{
+	local SERVER=$1
+	local PORT=$2
+	local PASSWORD=$3
+	local COMMAND=${@:5}
+	case $4 in
+		0)
+			rcon_send_raw "$SERVER $PORT" rcon $PASSWORD $COMMAND | rcon_strip_header print | rcon_recolor
+			;;
+		2)
+			local challenge="$(daemon_challenge)"
+			local cypher=$(daemon_rcon_encrypt $PASSWORD "$challenge $COMMAND")
+			rcon_send_raw "$SERVER $PORT" "srcon AES256 CHALLENGE $cypher"  | rcon_strip_header print | rcon_recolor
+			;;
+		*)
+			echo 1>&2 Unsupported protocol
+			return 1
+			;;
+	esac
+}
+
+function rcon_send()
+{
+	if $daemon
+	then
+		daemon_rcon_send "$@"
+	else
+		dp_rcon_send "$@"
+	fi
+}
+
 # Create MD4 HMAC
 # $1	 Password
 # $2...	 Data
 # stdout Binary hash
-function rcon_hash()
+function dp_rcon_hash()
 {
-	echo -n ${@:2} | openssl dgst -md4 -hmac $1 -binary
+	echo -n ${@:2} | openssl dgst -md4 -hmac "$1" -binary
+}
+
+# Create MD4 HMAC
+# $1	 Password
+# $2...	 Data
+# stdout Binary hash
+function daemon_rcon_encrypt()
+{
+	echo -n "${@:2}" | openssl enc -aes-256-ecb -pass "pass:$1" -nosalt -base64 -md sha256
 }
 
 # Remove the header from rcon packets
@@ -93,14 +139,14 @@ function rcon_recolor()
 # Requests (and prints) a Daemon challenge
 function daemon_challenge()
 {
-	local challenge="$(rcon_send_raw "$SERVER $PORT" getchallenge)"
-	echo "$challenge" | rcon_strip_header "challengeResponse "
+	local challenge="$(rcon_send_raw "$SERVER $PORT" getchallenge_new)"
+	echo "$challenge" | rcon_strip_header "challengeResponseNew "
 }
 
 # Requests (and prints) a Darkplaces challenge
 function dp_challenge()
 {
-	local challenge=$(rcon_send_raw "-p $SECURE_PORT $SERVER $PORT" getchallenge) # | rcon_strip_header "challenge " )
+	local challenge=$(rcon_send_raw "-p $SECURE_PORT $SERVER $PORT" getchallenge)
 	challenge=$(echo -n $challenge | rcon_strip_header "challenge "  |  head -c 11)
 }
 
@@ -110,7 +156,7 @@ function challenge()
 	then
 		daemon_challenge
 	else
-		challenge
+		dp_challenge
 	fi
 }
 
@@ -213,6 +259,10 @@ do
 				;;
 			-daemon)
 				daemon=true
+				if [ "$PORT" -eq 26000 ]
+				then
+					PORT=27960
+				fi
 				;;
 			-challenge)
 				cmd=challenge
