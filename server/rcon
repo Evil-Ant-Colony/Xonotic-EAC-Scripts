@@ -74,7 +74,7 @@ function daemon_rcon_send()
 		2)
 			local challenge="$(daemon_challenge)"
 			local cypher=$(daemon_rcon_encrypt $PASSWORD "$challenge $COMMAND")
-			rcon_send_raw "$SERVER $PORT" "srcon AES256 CHALLENGE $cypher"  | rcon_strip_header print | rcon_recolor
+			rcon_send_raw "$SERVER $PORT" "srcon CHALLENGE $cypher"  | rcon_strip_header print | rcon_recolor
 			;;
 		*)
 			echo 1>&2 Unsupported protocol
